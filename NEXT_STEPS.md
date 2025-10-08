@@ -1,10 +1,9 @@
 # Next Steps for Fencer Strength Chrome Extension
 
 ## Immediate Tasks
-- [ ] Confirm fencingtracker.com search endpoint and response format (HTML vs JSON)
-- [ ] Capture reliable selectors/fields for profile and strength pages, including stats availability
-- [ ] Validate name-order tolerance and define normalization strategy for cache keys
-- [ ] Document findings in `comms/research/` for dev handoff
+- [ ] Outline Phase 4 UI/UX polish requirements (animations, typography, accessibility touchpoints)
+- [ ] Inventory modal interaction gaps (keyboard focus, screen reader copy) ahead of Phase 4
+- [ ] Capture regression test scenarios from recent live-data work for future automation
 
 ## Future Enhancements
 - [ ] Prototype fallback logic if search responses exceed the 10-result cap or paginate
