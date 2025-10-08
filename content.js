@@ -102,7 +102,10 @@ function createModal() {
           <button class="fs-back-button">← Back to results</button>
           <div class="fs-profile-info">
             <h3 class="fs-profile-name"></h3>
-            <p class="fs-profile-details"></p>
+            <div class="fs-profile-details">
+              <div class="fs-profile-meta"></div>
+              <div class="fs-profile-record"></div>
+            </div>
           </div>
           <div class="fs-strength-cards"></div>
         </div>
@@ -251,23 +254,75 @@ async function showProfileView(searchResult, lookupId) {
     const profileView = modalElement.querySelector('.fs-profile-view');
     const profileName = modalElement.querySelector('.fs-profile-name');
     const profileDetails = modalElement.querySelector('.fs-profile-details');
+    const profileMeta = profileDetails ? profileDetails.querySelector('.fs-profile-meta') : null;
+    const profileRecord = profileDetails ? profileDetails.querySelector('.fs-profile-record') : null;
     const strengthCards = modalElement.querySelector('.fs-strength-cards');
 
     // Update profile info
-    profileName.textContent = profile.name;
-
-    // Build details line
-    const detailsParts = [];
-    if (profile.club) detailsParts.push(profile.club);
-    if (profile.country) detailsParts.push(profile.country);
-    if (profile.birthYear) detailsParts.push(`Born ${profile.birthYear}`);
-
-    // Add win/loss stats if available
-    if (history && history.bouts > 0) {
-      detailsParts.push(`${history.bouts} bouts (${history.wins}W / ${history.losses}L)`);
+    const profileUrl = createProfileUrl(profile);
+    if (profileUrl) {
+      profileName.innerHTML = `<a href="${profileUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(profile.name)}</a>`;
+    } else {
+      profileName.textContent = profile.name;
     }
 
-    profileDetails.textContent = detailsParts.join(' • ');
+    if (profileMeta) {
+      const metaItems = [];
+
+      if (profile.club) {
+        metaItems.push({
+          label: 'Club',
+          value: escapeHtml(profile.club)
+        });
+      }
+
+      if (profile.country) {
+        metaItems.push({
+          label: 'Country',
+          value: escapeHtml(profile.country)
+        });
+      }
+
+      if (profile.birthYear) {
+        const age = calculateApproxAge(profile.birthYear);
+        const birthValue =
+          age !== null
+            ? `${profile.birthYear} (Age ~${age})`
+            : `${profile.birthYear}`;
+        metaItems.push({
+          label: 'Birth Year',
+          value: escapeHtml(birthValue)
+        });
+      }
+
+      profileMeta.innerHTML = metaItems.length
+        ? metaItems
+            .map(
+              item => `
+                <div class="fs-profile-meta-item">
+                  <span class="fs-profile-meta-label">${item.label}</span>
+                  <span class="fs-profile-meta-value">${item.value}</span>
+                </div>
+              `
+            )
+            .join('')
+        : '<div class="fs-profile-meta-placeholder">No profile details available</div>';
+    }
+
+    if (profileRecord) {
+      if (history && history.bouts > 0) {
+        const recordLine = `${history.wins}W / ${history.losses}L`;
+        profileRecord.innerHTML = `
+          <div class="fs-profile-record-card">
+            <div class="fs-profile-record-label">Total bouts</div>
+            <div class="fs-profile-record-value">${history.bouts}</div>
+            <div class="fs-profile-record-sub">${escapeHtml(recordLine)}</div>
+          </div>
+        `;
+      } else {
+        profileRecord.innerHTML = '';
+      }
+    }
 
     // Clear previous strength cards
     strengthCards.innerHTML = '';
@@ -372,6 +427,42 @@ function hideAllStates() {
  */
 function capitalizeFirst(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Calculate approximate age from birth year
+ * @param {number} birthYear - Birth year value
+ * @returns {number|null} Age in years or null if invalid
+ */
+function calculateApproxAge(birthYear) {
+  const year = Number(birthYear);
+  if (!Number.isInteger(year)) {
+    return null;
+  }
+
+  const currentYear = new Date().getFullYear();
+  if (year <= 0 || year > currentYear) {
+    return null;
+  }
+
+  return currentYear - year;
+}
+
+/**
+ * Build profile URL for the given fencer
+ * @param {Object} profile - Profile data containing id and slug
+ * @returns {string|null} Profile URL or null if data incomplete
+ */
+function createProfileUrl(profile) {
+  if (!profile || !profile.id || !profile.slug) {
+    return null;
+  }
+
+  const baseUrl = globalThis.FENCINGTRACKER_BASE_URL || 'https://fencingtracker.com';
+  const sanitizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const idPart = encodeURIComponent(String(profile.id));
+  const slugPart = encodeURIComponent(String(profile.slug));
+  return `${sanitizedBase}/p/${idPart}/${slugPart}`;
 }
 
 /**

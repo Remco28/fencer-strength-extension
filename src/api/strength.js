@@ -1,7 +1,7 @@
 // Strength parser for fencingtracker.com
 // Fetches and parses /p/{id}/{slug}/strength HTML
 
-const BASE_URL = 'https://fencingtracker.com';
+const STRENGTH_BASE_URL = globalThis.FENCINGTRACKER_BASE_URL || 'https://fencingtracker.com';
 
 /**
  * Get fencer strength data
@@ -32,7 +32,7 @@ async function getStrength(id, slug) {
  * @returns {Promise<Object>} Parsed strength data
  */
 async function fetchStrength(id, slug) {
-  const url = `${BASE_URL}/p/${id}/${slug}/strength`;
+  const url = `${STRENGTH_BASE_URL}/p/${id}/${slug}/strength`;
   let lastError = null;
 
   // Try with one retry on 429/5xx

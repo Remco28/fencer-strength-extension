@@ -1,7 +1,7 @@
 // Profile parser for fencingtracker.com
 // Fetches and parses /p/{id}/{slug} HTML
 
-const BASE_URL = 'https://fencingtracker.com';
+const PROFILE_BASE_URL = globalThis.FENCINGTRACKER_BASE_URL || 'https://fencingtracker.com';
 
 /**
  * Get fencer profile data
@@ -45,7 +45,7 @@ async function getProfile(id, slug, fallbackName = null) {
  * @returns {Promise<Object>} Parsed profile data
  */
 async function fetchProfile(id, slug) {
-  const url = `${BASE_URL}/p/${id}/${slug}`;
+  const url = `${PROFILE_BASE_URL}/p/${id}/${slug}`;
   let lastError = null;
 
   // Try with one retry on 429/5xx

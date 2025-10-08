@@ -1,8 +1,8 @@
 # Next Steps for Fencer Strength Chrome Extension
 
 ## Immediate Tasks
-- [ ] Outline Phase 4 UI/UX polish requirements (animations, typography, accessibility touchpoints)
-- [ ] Inventory modal interaction gaps (keyboard focus, screen reader copy) ahead of Phase 4
+- [x] Outline Phase 4 UI/UX polish requirements (animations, typography, accessibility touchpoints)
+- [x] Inventory modal interaction gaps (keyboard focus, screen reader copy) ahead of Phase 4
 - [ ] Capture regression test scenarios from recent live-data work for future automation
 
 ## Future Enhancements

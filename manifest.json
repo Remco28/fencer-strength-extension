@@ -6,7 +6,8 @@
   "permissions": [
     "contextMenus",
     "activeTab",
-    "storage"
+    "storage",
+    "scripting"
   ],
   "host_permissions": [
     "https://fencingtracker.com/*"
@@ -18,6 +19,7 @@
     {
       "matches": ["<all_urls>"],
       "js": [
+        "src/config/base-url.js",
         "src/cache/cache.js",
         "src/utils/normalize.js",
         "src/api/search.js",

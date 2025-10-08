@@ -1,7 +1,7 @@
 // History parser for fencingtracker.com
 // Fetches and parses /p/{id}/{slug}/history HTML for win/loss stats
 
-const BASE_URL = 'https://fencingtracker.com';
+const HISTORY_BASE_URL = globalThis.FENCINGTRACKER_BASE_URL || 'https://fencingtracker.com';
 
 /**
  * Get fencer history/win-loss data
@@ -32,7 +32,7 @@ async function getHistory(id, slug) {
  * @returns {Promise<Object>} Parsed history data
  */
 async function fetchHistory(id, slug) {
-  const url = `${BASE_URL}/p/${id}/${slug}/history`;
+  const url = `${HISTORY_BASE_URL}/p/${id}/${slug}/history`;
   let lastError = null;
 
   // Try with one retry on 429/5xx
@@ -99,24 +99,7 @@ function parseHistoryHtml(html) {
   let wins = 0;
   let losses = 0;
 
-  // Find the "Win/Loss Statistics" heading
-  const headings = doc.querySelectorAll('h3');
-  let statsTable = null;
-
-  for (const heading of headings) {
-    if (heading.textContent.includes('Win/Loss Statistics')) {
-      // Find the next table after this heading
-      let nextElement = heading.nextElementSibling;
-      while (nextElement) {
-        if (nextElement.tagName === 'TABLE') {
-          statsTable = nextElement;
-          break;
-        }
-        nextElement = nextElement.nextElementSibling;
-      }
-      break;
-    }
-  }
+  const statsTable = findWinLossTable(doc);
 
   if (!statsTable) {
     console.warn('Win/Loss Statistics table not found');
@@ -125,19 +108,43 @@ function parseHistoryHtml(html) {
 
   // Parse the table
   const rows = statsTable.querySelectorAll('tbody tr');
+  const allTimeIndex = getAllTimeColumnIndex(statsTable);
 
   for (const row of rows) {
     const cells = row.querySelectorAll('td, th');
     if (cells.length === 0) continue;
 
     const rowLabel = cells[0].textContent.trim().toLowerCase();
+    const sanitizedLabel = rowLabel.replace(/[^a-z]/g, '');
+
+    if (sanitizedLabel.includes('ratio')) {
+      continue;
+    }
+
+    const isPoolRow = rowLabel.includes('pool');
+    const isDirectElimRow = /\bde\b/.test(rowLabel) || rowLabel.includes('direct elimination');
+
+    if (isPoolRow || isDirectElimRow) {
+      continue;
+    }
 
     // Find "All Time" column (usually last column)
-    const allTimeValue = cells[cells.length - 1].textContent.trim();
+    const valueCell =
+      allTimeIndex !== null && allTimeIndex < cells.length
+        ? cells[allTimeIndex]
+        : cells[cells.length - 1];
 
-    if (rowLabel.includes('victorie') || rowLabel.includes('wins')) {
+    const allTimeValue = valueCell.textContent.trim();
+
+    if (
+      sanitizedLabel.includes('victo') ||
+      sanitizedLabel.includes('wins')
+    ) {
       wins = parseStatValue(allTimeValue);
-    } else if (rowLabel.includes('loss')) {
+    } else if (
+      sanitizedLabel.includes('loss') ||
+      sanitizedLabel.includes('defeat')
+    ) {
       losses = parseStatValue(allTimeValue);
     }
   }
@@ -166,4 +173,58 @@ function parseStatValue(text) {
 
   const value = parseInt(trimmed, 10);
   return isNaN(value) ? 0 : value;
+}
+
+/**
+ * Locate the win/loss statistics table within the document
+ * @param {Document} doc - Parsed HTML document
+ * @returns {HTMLTableElement|null} Table element or null if not found
+ */
+function findWinLossTable(doc) {
+  const tables = doc.querySelectorAll('table');
+
+  for (const table of tables) {
+    const rowLabels = table.querySelectorAll('tbody tr td:first-child, tbody tr th:first-child');
+
+    for (const cell of rowLabels) {
+      const label = cell.textContent.trim().toLowerCase();
+      const normalized = label.replace(/[^a-z]/g, '');
+
+      if (
+        normalized.includes('victo') ||
+        normalized.includes('wins') ||
+        normalized.includes('loss') ||
+        normalized.includes('defeat')
+      ) {
+        return table;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Determine the column index corresponding to "All Time" totals
+ * @param {HTMLTableElement} table - Win/loss table
+ * @returns {number|null} Zero-based column index or null if not identified
+ */
+function getAllTimeColumnIndex(table) {
+  const headerRow = table.querySelector('thead tr');
+  if (!headerRow) {
+    return null;
+  }
+
+  const headerCells = Array.from(headerRow.querySelectorAll('th, td'));
+
+  for (let i = 0; i < headerCells.length; i++) {
+    const headerText = headerCells[i].textContent.trim().toLowerCase();
+    const normalized = headerText.replace(/[^a-z]/g, '');
+
+    if (normalized.includes('alltime')) {
+      return i;
+    }
+  }
+
+  return null;
 }

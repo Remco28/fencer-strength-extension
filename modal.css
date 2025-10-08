@@ -186,24 +186,112 @@
 }
 
 .fs-profile-info {
-  padding: 20px;
-  background: #f9fafb;
-  border-radius: 8px;
+  padding: 22px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
   margin-bottom: 24px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .fs-profile-name {
-  margin: 0 0 8px 0;
-  font-size: 22px;
+  margin: 0;
+  font-size: 24px;
   font-weight: 700;
   color: #111827;
 }
 
+.fs-profile-name a {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+.fs-profile-name a:hover {
+  text-decoration: underline;
+}
+
 .fs-profile-details {
-  margin: 0;
-  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fs-profile-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.fs-profile-meta-item {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+}
+
+.fs-profile-meta-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: #6b7280;
-  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.fs-profile-meta-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.4;
+}
+
+.fs-profile-meta-placeholder {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px dashed #cbd5f5;
+  color: #6b7280;
+  font-size: 14px;
+  text-align: center;
+}
+
+.fs-profile-record {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.fs-profile-record-card {
+  flex: 1 1 220px;
+  background: linear-gradient(140deg, #2563eb 0%, #3b82f6 60%, #60a5fa 100%);
+  color: #f8fafc;
+  border-radius: 14px;
+  padding: 16px 20px;
+  box-shadow: 0 16px 40px rgba(37, 99, 235, 0.25);
+}
+
+.fs-profile-record-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.fs-profile-record-value {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-top: 6px;
+}
+
+.fs-profile-record-sub {
+  font-size: 14px;
+  margin-top: 6px;
+  opacity: 0.9;
+  font-weight: 500;
 }
 
 /* Strength cards */
