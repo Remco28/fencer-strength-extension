@@ -4,6 +4,8 @@
 - [x] Outline Phase 4 UI/UX polish requirements (animations, typography, accessibility touchpoints)
 - [x] Inventory modal interaction gaps (keyboard focus, screen reader copy) ahead of Phase 4
 - [ ] Capture regression test scenarios from recent live-data work for future automation
+- [ ] Draft animation/motion options for modal entrance, card reveals, and selection transitions
+- [ ] Audit keyboard/focus flow with the refreshed layout and record follow-up fixes
 
 ## Future Enhancements
 - [ ] Prototype fallback logic if search responses exceed the 10-result cap or paginate
@@ -11,7 +13,7 @@
 - [ ] Assess feasibility of a quick-add favorites list within the modal for repeat lookups
 
 ## Documentation
-- [ ] Update `comms/planning.md` with confirmed endpoints and selectors once verified
+- [x] Update `comms/planning.md` with confirmed endpoints and selectors once verified
 - [ ] Draft UX notes covering modal behavior, load states, and accessibility touchpoints
 - [ ] Outline testing checklist for name variants, offline handling, and rate-limit scenarios
 

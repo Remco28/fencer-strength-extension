@@ -19,6 +19,13 @@ function normalizeQuery(query) {
   // Original cleaned version
   variants.push(cleaned);
 
+  // Structured variants for formats like "XIAO Leon (Ruibo)"
+  const structured = parseStructuredExternalName(cleaned);
+  if (structured) {
+    const structuredVariants = buildStructuredVariants(structured);
+    structuredVariants.forEach(variant => pushVariant(variants, variant));
+  }
+
   // Try to detect and swap name order
   const commaIndex = cleaned.indexOf(',');
 
@@ -32,12 +39,58 @@ function normalizeQuery(query) {
     // No comma: "First Last" → "Last, First"
     const parts = cleaned.split(' ');
     if (parts.length === 2) {
-      variants.push(`${parts[1]}, ${parts[0]}`);
+      pushVariant(variants, `${parts[1]}, ${parts[0]}`);
     } else if (parts.length > 2) {
       // Multi-part names: try "LastPart, FirstParts"
       const lastName = parts[parts.length - 1];
-      const firstNames = parts.slice(0, -1).join(' ');
-      variants.push(`${lastName}, ${firstNames}`);
+      const sanitizedLast = lastName ? lastName.replace(/[^A-Za-z'-]/g, '') : '';
+      if (lastName && !/[()]/.test(lastName) && sanitizedLast.length > 1) {
+        const firstNames = parts.slice(0, -1).join(' ');
+        pushVariant(variants, `${lastName}, ${firstNames}`);
+      }
+    }
+
+    // Handle East Asian-style names (uppercase surname first)
+    const allUppercase = parts.length >= 3 && parts.every(token => token === token.toUpperCase());
+    const mixedCaseSurnameFirst =
+      parts.length >= 3 &&
+      !allUppercase &&
+      isLikelySurnameToken(parts[0]) &&
+      parts.slice(1).some(token => token !== token.toUpperCase()) &&
+      !NAME_SUFFIXES.has(parts[1].replace(/[.,]/g, '').toLowerCase());
+
+    if (allUppercase || mixedCaseSurnameFirst) {
+      const surname = capitalizeToken(parts[0]);
+      const remainingTokens = parts
+        .slice(1)
+        .filter(token => !NAME_SUFFIXES.has(token.replace(/[.,]/g, '').toLowerCase()));
+
+      if (remainingTokens.length > 0) {
+        const givenTokens = remainingTokens.map(capitalizeToken);
+        const givenNames = givenTokens.join(' ');
+        const firstGiven = givenTokens[0];
+
+        pushVariant(variants, `${givenNames} ${surname}`);
+        pushVariant(variants, `${surname}, ${givenNames}`);
+        pushVariant(variants, `${surname}, ${firstGiven}`);
+        pushVariant(variants, `${firstGiven} ${surname}`);
+      }
+    } else if (
+      parts.length >= 3 &&
+      isLikelySurnameToken(parts[0]) &&
+      NAME_SUFFIXES.has(parts[1].replace(/[.,]/g, '').toLowerCase())
+    ) {
+      // Handle patterns like "EWART Jr. Stephen P." by providing a first-name-only variant
+      const surname = capitalizeToken(parts[0]);
+      const remainingTokens = parts.slice(2).map(capitalizeToken);
+      if (remainingTokens.length > 0) {
+        const givenNames = remainingTokens.join(' ');
+        const firstGiven = remainingTokens[0];
+        pushVariant(variants, `${givenNames} ${surname}`);
+        pushVariant(variants, `${surname}, ${givenNames}`);
+        pushVariant(variants, `${firstGiven} ${surname}`);
+        pushVariant(variants, `${surname}, ${firstGiven}`);
+      }
     }
   }
 
@@ -76,6 +129,33 @@ function parseSlug(slug) {
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+/**
+ * Build a slug from an arbitrary name string
+ * @param {string} name - Raw name (may include commas, nicknames, suffixes)
+ * @returns {string} Hyphenated slug in "first-last" order
+ */
+function buildSlugFromName(name) {
+  if (!name) return '';
+
+  const trimmed = name.trim();
+  if (!trimmed) return '';
+
+  const structured = parseStructuredExternalName(trimmed);
+  if (structured) {
+    const base = `${structured.firstNames} ${structured.lastName}`.trim();
+    return createSlug(base || trimmed);
+  }
+
+  if (trimmed.includes(',')) {
+    const parts = trimmed.split(',').map(part => part.trim()).filter(Boolean);
+    if (parts.length === 2) {
+      return createSlug(`${parts[1]} ${parts[0]}`);
+    }
+  }
+
+  return createSlug(trimmed);
 }
 
 /**
@@ -127,4 +207,196 @@ function getStrengthCacheKey(id) {
  */
 function getHistoryCacheKey(id) {
   return `history:${id}`;
+}
+
+const NAME_SUFFIXES = new Set(['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv', 'v', 'vi']);
+
+/**
+ * Attempt to parse structured names from sources like fencingtimelive.com
+ * Example: "XIAO Leon (Ruibo)" → { lastName: "Xiao", firstNames: "Leon", nickname: "Ruibo" }
+ * @param {string} rawName - Raw name string
+ * @returns {Object|null} Parsed name parts or null when unable to parse
+ */
+function parseStructuredExternalName(rawName) {
+  if (!rawName) return null;
+
+  // Extract nickname within parentheses (if present)
+  const nicknameMatch = rawName.match(/\(([^)]+)\)/);
+  const nickname = nicknameMatch ? nicknameMatch[1].trim() : null;
+
+  // Remove parentheses content and collapse whitespace
+  const withoutNick = rawName.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!withoutNick) return null;
+
+  const tokens = withoutNick
+    .split(' ')
+    .map(token => token.replace(/[.,]+$/g, ''))
+    .filter(Boolean);
+  if (tokens.length === 0) {
+    return null;
+  }
+
+  // Identify leading uppercase tokens as potential surname
+  const lastTokens = [];
+  let index = 0;
+  while (index < tokens.length) {
+    const token = tokens[index];
+    if (isLikelySurnameToken(token) && !NAME_SUFFIXES.has(token.toLowerCase())) {
+      lastTokens.push(token);
+      index++;
+      continue;
+    }
+    break;
+  }
+
+  if (lastTokens.length === 0) {
+    // Fallback to assuming final token is the surname
+    const fallbackLast = tokens[tokens.length - 1];
+    if (!fallbackLast) return null;
+    lastTokens.push(fallbackLast);
+    index = Math.max(tokens.length - 1, 1);
+  }
+
+  let suffix = null;
+
+  if (index < tokens.length) {
+    const candidate = tokens[index].replace(/[,]/g, '');
+    if (NAME_SUFFIXES.has(candidate.toLowerCase())) {
+      suffix = tokens[index];
+      index++;
+    }
+  }
+
+  let givenTokens = tokens.slice(index);
+
+  if (givenTokens.length === 0 && nickname) {
+    givenTokens = [nickname];
+  }
+
+  if (givenTokens.length === 0) {
+    // As a final fallback, use any remaining tokens after the surname
+    givenTokens = tokens.slice(lastTokens.length);
+  }
+
+  if (givenTokens.length === 0) {
+    return null;
+  }
+
+  const formattedLastName = lastTokens.map(formatNameToken).join(' ');
+  const formattedFirstNames = givenTokens.map(formatNameToken).join(' ').trim();
+  const formattedSuffix = suffix ? suffix.replace(/,$/, '') : null;
+  const formattedNickname = nickname ? formatNameToken(nickname) : null;
+
+  if (!formattedLastName || !formattedFirstNames) {
+    return null;
+  }
+
+  return {
+    lastName: formattedLastName,
+    firstNames: formattedFirstNames,
+    suffix: formattedSuffix,
+    nickname: formattedNickname
+  };
+}
+
+/**
+ * Build search variants from parsed name parts
+ * @param {Object} parts - Parsed name parts
+ * @returns {string[]} Array of name variants
+ */
+function buildStructuredVariants(parts) {
+  const variants = [];
+  const { firstNames, lastName, suffix, nickname } = parts;
+
+  const primary = `${firstNames} ${lastName}`.trim();
+  const primaryWithSuffix = suffix ? `${primary} ${suffix}`.trim() : primary;
+  pushVariant(variants, primaryWithSuffix);
+
+  if (suffix) {
+    pushVariant(variants, primary); // Variant without suffix
+  }
+
+  const commaVariant = suffix
+    ? `${lastName}, ${firstNames} ${suffix}`.trim()
+    : `${lastName}, ${firstNames}`.trim();
+  pushVariant(variants, commaVariant);
+
+  const firstNamesNoTrailingInitials = stripTrailingInitials(firstNames);
+  if (firstNamesNoTrailingInitials && firstNamesNoTrailingInitials !== firstNames) {
+    const trimmedPrimary = `${firstNamesNoTrailingInitials} ${lastName}`.trim();
+    const trimmedWithSuffix = suffix ? `${trimmedPrimary} ${suffix}`.trim() : trimmedPrimary;
+    pushVariant(variants, trimmedWithSuffix);
+    pushVariant(variants, trimmedPrimary);
+
+    const trimmedComma = suffix
+      ? `${lastName}, ${firstNamesNoTrailingInitials} ${suffix}`.trim()
+      : `${lastName}, ${firstNamesNoTrailingInitials}`.trim();
+    pushVariant(variants, trimmedComma);
+  }
+
+  if (nickname && nickname.toLowerCase() !== firstNames.toLowerCase()) {
+    pushVariant(variants, `${nickname} ${lastName}`.trim());
+    pushVariant(variants, `${lastName}, ${nickname}`.trim());
+  }
+
+  return variants.filter(Boolean);
+}
+
+/**
+ * Determine if a token should be treated as part of an uppercase surname
+ * @param {string} token - Token to inspect
+ * @returns {boolean} True if token looks like an uppercase surname segment
+ */
+function isLikelySurnameToken(token) {
+  if (!token) return false;
+  const sanitized = token.replace(/['’\-\.]/g, '');
+  if (!/[A-Za-z]/.test(sanitized)) {
+    return false;
+  }
+
+  // Treat 1-2 letter abbreviations as likely initials, not surname
+  if (sanitized.length <= 2 && sanitized === sanitized.toUpperCase()) {
+    return false;
+  }
+
+  return sanitized === sanitized.toUpperCase();
+}
+
+/**
+ * Convert a name token to title case while preserving hyphens/apostrophes
+ * @param {string} token - Token to format
+ * @returns {string} Formatted token
+ */
+function formatNameToken(token) {
+  if (!token) return token;
+  const lower = token.toLowerCase();
+  return lower.replace(/(^|[-'\s])[a-z]/g, match => match.toUpperCase());
+}
+
+function capitalizeToken(token) {
+  if (!token) return token;
+  return token
+    .toLowerCase()
+    .replace(/(^|[-'\s])[a-z]/g, match => match.toUpperCase());
+}
+
+function stripTrailingInitials(firstNames) {
+  if (!firstNames) return firstNames;
+  const tokens = firstNames.split(' ').filter(Boolean);
+  while (tokens.length > 1 && isInitialToken(tokens[tokens.length - 1])) {
+    tokens.pop();
+  }
+  return tokens.join(' ');
+}
+
+function isInitialToken(token) {
+  if (!token) return false;
+  const cleaned = token.replace(/\./g, '');
+  return cleaned.length === 1;
+}
+
+function pushVariant(list, value) {
+  if (!value) return;
+  if (list.includes(value)) return;
+  list.push(value);
 }

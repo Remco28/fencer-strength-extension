@@ -199,18 +199,43 @@ function parseStrengthRange(text) {
  * @returns {Object|null} Series data or null
  */
 function parseSeriesData(html) {
-  try {
-    // Look for "const series = {...}" in script
-    const seriesMatch = html.match(/const\s+series\s*=\s*({[^;]+});/);
-    if (!seriesMatch) {
-      return null;
-    }
-
-    // Parse the JSON
-    const seriesData = JSON.parse(seriesMatch[1]);
-    return seriesData;
-  } catch (error) {
-    console.warn('Failed to parse series data:', error);
+  // Look for "const series = {...}" in script
+  const seriesMatch = html.match(/const\s+series\s*=\s*({[\s\S]*?});/);
+  if (!seriesMatch) {
     return null;
   }
+
+  const objectLiteral = seriesMatch[1];
+
+  // Attempt JSON parse first
+  try {
+    return JSON.parse(objectLiteral);
+  } catch (jsonError) {
+    // Fall back to a manual parser that can handle unquoted keys and single quotes
+    try {
+      return parseJsObjectLiteral(objectLiteral);
+    } catch (literalError) {
+      console.warn('Failed to parse series data:', literalError);
+      return null;
+    }
+  }
+}
+
+/**
+ * Parse a simple JS object literal without using eval.
+ * Supports unquoted identifiers and single-quoted strings.
+ * @param {string} literal - Object literal string
+ * @returns {any} Parsed value
+ */
+function parseJsObjectLiteral(literal) {
+  // Normalize quotes
+  let normalized = literal.replace(/'/g, '"');
+
+  // Quote unquoted keys by inserting double quotes around identifier + colon
+  normalized = normalized.replace(/([\s,{])([A-Za-z_][\w]*)\s*:/g, '$1"$2":');
+
+  // Remove trailing commas
+  normalized = normalized.replace(/,(\s*[}\]])/g, '$1');
+
+  return JSON.parse(normalized);
 }

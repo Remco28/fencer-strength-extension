@@ -2,18 +2,19 @@
 
 A Chrome extension that allows users to quickly look up fencer strength ratings from FencingTracker.com using a context menu.
 
-## Current Status: Phase 3 - Live Data Integration
+## Current Status: Phase 4 – UI Polish & UX
 
-The extension now fetches real data from fencingtracker.com with intelligent caching to minimize network requests and respect rate limits.
+Live data lookup is complete, the modal experience has been refreshed with richer layout details, and we’re layering in usability polish while preparing for validation.
 
 ## Features
 
 - **Context menu integration**: Right-click on selected text to look up fencer information
 - **Live data**: Retrieves real-time fencer profiles, strength ratings, and bout statistics from FencingTracker.com
 - **Smart caching**: 24-hour cache reduces redundant API calls and improves response times
-- **Query normalization**: Handles different name formats ("First Last", "Last, First")
+- **Query normalization**: Handles different name formats (e.g., `"First Last"`, `"Last, First"`, `"XIAO Leon (Ruibo)"`, `"SIMMONS Ariel (Ari) J."`)
 - **Multi-weapon support**: View DE and Pool strength ratings for epee, foil, and saber
-- **Bout statistics**: Displays total bouts, wins, and losses when available
+- **Bout statistics**: Displays total bouts, wins, and losses when available with a dedicated highlight card
+- **Profile shortcuts**: Modal header links directly to the live profile and surfaces club, country, birth year, and approximate age in quick-read chips
 - **Resilient error handling**: Gracefully handles network issues, missing data, and rate limits
 
 ## Installation (Development Mode)
@@ -42,7 +43,7 @@ The extension now fetches real data from fencingtracker.com with intelligent cac
 - **Single match**: Goes directly to the fencer's profile
 - **Multiple matches**: Shows a selection list to choose from
 - **No matches**: Displays a helpful error message
-- **Name variants**: Automatically tries different formats (e.g., "John Doe" → "Doe, John")
+- **Name variants**: Automatically tries different formats, including comma-separated, suffixes (`"Jr."`), and parenthetical nicknames so feeds like `"XIAO Leon (Ruibo)"` resolve correctly
 
 ### Profile Information
 
@@ -144,7 +145,7 @@ After modifying any files:
 
 ## Next Steps
 
-- **Phase 4**: UI/UX polish, animations, accessibility improvements
+- **Phase 4**: In progress — UI/UX polish, animation, accessibility refinements, external-name handling
 - **Phase 5**: Testing automation, documentation updates, deployment prep
 
 ## Support
