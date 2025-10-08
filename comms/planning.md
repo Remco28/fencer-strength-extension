@@ -12,6 +12,7 @@ This Chrome extension enables users to quickly look up fencing fencer profiles o
 
 **Assumptions:**
 - Selected text is a full name (first + last); no validation for partial names.
+- External sources (e.g., fencingtimelive.com) may supply names with uppercase surnames, suffixes, and parenthetical nicknames; normalization utilities should emit workable variants automatically.
 - Site structure based on investigation (as of October 8, 2025): Search via client-side JS (likely API endpoint like `/api/search?q={name}`); profiles at `/p/{ID}/{Name}`; strength at `/p/{ID}/{Name}/strength`.
 - Developer must inspect the site (e.g., via DevTools Network tab) to confirm API endpoints and HTML selectors, as some content may be JS-rendered.
 - Total bouts calculated as wins + losses; if not directly available, sum from profile results table (but prefer direct stat if present).
@@ -74,7 +75,7 @@ This Chrome extension enables users to quickly look up fencing fencer profiles o
   "name": "FencingTracker Lookup",
   "version": "1.0",
   "description": "Right-click names to lookup fencer profiles on FencingTracker.",
-  "permissions": ["contextMenus", "activeTab", "storage"],
+  "permissions": ["contextMenus", "activeTab", "storage", "scripting"],
   "host_permissions": ["https://fencingtracker.com/*"],
   "background": {
     "service_worker": "background.js"
@@ -82,7 +83,16 @@ This Chrome extension enables users to quickly look up fencing fencer profiles o
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": [
+        "src/config/base-url.js",
+        "src/cache/cache.js",
+        "src/utils/normalize.js",
+        "src/api/search.js",
+        "src/api/profile.js",
+        "src/api/strength.js",
+        "src/api/history.js",
+        "content.js"
+      ],
       "css": ["modal.css"]
     }
   ],
@@ -98,7 +108,7 @@ This Chrome extension enables users to quickly look up fencing fencer profiles o
 ##### Background Script (background.js)
 - Create context menu: `chrome.contextMenus.create({id: "lookupFencer", title: "Lookup Fencer on FencingTracker", contexts: ["selection"]})`.
 - On click: If `info.selectionText`, send message to content script with query.
-- No direct scraping here; delegate to content for tab-specific injection if needed.
+- If the target tab does not yet have the content scripts, dynamically inject the script/css bundle via `chrome.scripting` before retrying the message, and warn when injection is disallowed (e.g., Chrome Web Store, chrome:// pages).
 
 ##### Content Script (content.js)
 - Listen for messages from background.
@@ -117,8 +127,8 @@ This Chrome extension enables users to quickly look up fencing fencer profiles o
 - Event listeners: Document click for outside close; `keydown` for Esc.
 
 ##### UI Components
-- **Selection Modal:** `<div id="fencer-select-modal" class="modal"> <h2>Select Fencer</h2> <ul id="results-list"></ul> </div>`. List items: `<li><a href="#" data-id="{id}">{name} - {club}</a></li>`.
-- **Profile Modal:** `<div id="fencer-profile-modal" class="modal"> <button class="close">&times;</button> <h2 id="fencer-name"></h2> <p>Birth Year: <span id="birth-year"></span> (Age: <span id="age"></span>)</p> <p>Club: <span id="club"></span></p> <p>Strength: <span id="strength-de"></span> | Pool: <span id="strength-pool"></span></p> <p>Total Bouts: <span id="total-bouts"></span></p> </div>`.
+- **Selection Modal:** `<div id="fencer-select-modal" class="modal"> <h2>Select a fencer</h2> <ul class="fs-results-items"></ul> </div>`. Each item renders name + club/country summary; clicking hydrates the profile view.
+- **Profile Modal:** `<div class="fs-profile-view">` hosts a header with a linked name, meta chip grid (club, country, birth year + age), and a bouts highlight card that summarizes wins/losses before showing weapon strength cards.
 - Loading: `<div class="spinner">Loading...</div>` during fetches.
 
 ##### Styles (modal.css)
@@ -138,6 +148,7 @@ This Chrome extension enables users to quickly look up fencing fencer profiles o
   - Multiple: Common name like "John Smith" → Selection list.
   - No results: Rare name → Error.
   - Offline: "No connection" error.
+  - External feed formats: `"XIAO Leon (Ruibo)"`, `"SIMMONS Ariel (Ari) J."` → Confirm normalization variants resolve to live profiles.
 
 #### 5. Security and Privacy Considerations
 - No data storage beyond cache (local, user-only).

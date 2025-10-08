@@ -90,9 +90,9 @@ async function searchPost(query) {
 
       // Transform results to standard format
       return data.map(item => {
-        // API returns name already formatted as slug (e.g., "Lee-Kiefer")
-        // Preserve casing; just replace spaces with hyphens if needed
-        const slug = item.name.replace(/\s+/g, '-');
+        const slug =
+          item.slug ||
+          buildSlugFromName(item.name || item.display_name || item.full_name || '');
 
         return {
           id: item.usfa_id || item.id,

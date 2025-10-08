@@ -13,11 +13,13 @@
 ## Phase 3 – Data Integration (Developer)
 - **Goals:** Implement real fetch layer, HTML parsing, caching, and defensive retry/backoff logic.
 - **Deliverables:** Search API client, profile/strength/history parsers, normalization helpers, cache module leveraging `chrome.storage.local`.
-- **Exit Criteria:** Live lookup pipeline completes (search → profile → strength), multi-weapon strengths displayed, cache reused within TTL, graceful errors on 404/429.
+- **Exit Criteria:** ✅ Live lookup pipeline completes (search → profile → strength), multi-weapon strengths displayed, cache reused within TTL, graceful errors on 404/429.
 
 ## Phase 4 – UI Polish & UX (Designer + Developer)
 - **Goals:** Finalize modal styling, selection UX, animations, accessibility considerations, and multi-result handling.
-- **Deliverables:** Responsive modal with loading states, scrollable selection list, strength cards showing DE/Pool per weapon, error/empty states.
+- **Deliverables:** Responsive modal with loading states, scrollable selection list, strength cards showing DE/Pool per weapon, error/empty states, and polished profile header.
+- **Progress Highlights:** Linked profile headers with quick stats, total-bout highlight card, and structured name parsing to support external feeds (e.g., FencingTimeLive formats).
+- **Next Focus:** Build out motion/animation polish, tighten accessibility (focus management, semantics), and enhance multi-result ergonomics.
 - **Exit Criteria:** QA script covering single/multi/no results passes; UI meets design brief with brand colors; keyboard dismissal (Esc/outside click) functional.
 
 ## Phase 5 – Validation & Handoff (Tech Advisor + Developer)
