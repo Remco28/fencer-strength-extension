@@ -334,7 +334,8 @@ async function showProfileView(searchResult, lookupId) {
       weapons.forEach(weapon => {
         const weaponData = strength.weapons[weapon];
         const card = document.createElement('div');
-        card.className = 'fs-strength-card';
+        const weaponClass = `fs-weapon-${weapon.toLowerCase()}`;
+        card.className = `fs-strength-card ${weaponClass}`;
 
         let strengthHtml = `<h4 class="fs-weapon-name">${capitalizeFirst(weapon)}</h4>`;
         strengthHtml += '<div class="fs-strength-data">';

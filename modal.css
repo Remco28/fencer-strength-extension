@@ -1,8 +1,41 @@
 /* Fencer Strength Modal Styles */
 
+/* Font declarations */
+@font-face {
+  font-family: 'Inter';
+  src: url('fonts/Inter-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('fonts/Inter-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('fonts/Inter-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Design tokens */
 :root {
   --fs-accent-gradient: linear-gradient(140deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
+  --fs-gradient-foil: linear-gradient(140deg, #059669 0%, #10b981 55%, #34d399 100%);
+  --fs-gradient-epee: linear-gradient(140deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
+  --fs-gradient-sabre: linear-gradient(140deg, #dc2626 0%, #ef4444 55%, #f87171 100%);
+  --fs-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --fs-radius-card: 8px;
+  --fs-radius-item: 6px;
+  --fs-radius-button: 4px;
+  --fs-spacing-tight: 6px;
 }
 
 /* Overlay backdrop */
@@ -17,13 +50,13 @@
   align-items: center;
   justify-content: center;
   z-index: 999999;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: var(--fs-font-sans);
 }
 
 /* Modal container */
 .fs-modal-container {
   background: white;
-  border-radius: 12px;
+  border-radius: var(--fs-radius-card);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   width: 90%;
   max-width: 600px;
@@ -63,7 +96,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--fs-radius-item);
   transition: background-color 0.15s ease;
 }
 
@@ -144,7 +177,7 @@
 .fs-result-item {
   padding: 16px;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: var(--fs-radius-item);
   margin-bottom: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -182,7 +215,7 @@
   cursor: pointer;
   padding: 8px 12px;
   margin: -8px -12px 16px -12px;
-  border-radius: 6px;
+  border-radius: var(--fs-radius-button);
   transition: background-color 0.15s ease;
 }
 
@@ -193,7 +226,7 @@
 .fs-profile-info {
   padding: 18px;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 12px;
+  border-radius: var(--fs-radius-card);
   margin-bottom: 16px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
   display: flex;
@@ -232,7 +265,7 @@
 .fs-profile-meta-item {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border-radius: var(--fs-radius-item);
   padding: 12px 14px;
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
 }
@@ -256,7 +289,7 @@
 
 .fs-profile-meta-placeholder {
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--fs-radius-item);
   border: 1px dashed #cbd5f5;
   color: #6b7280;
   font-size: 14px;
@@ -267,10 +300,9 @@
 
 /* Strength cards - hero gradient accent */
 .fs-strength-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
 }
 
 .fs-strength-explanation {
@@ -279,16 +311,31 @@
   color: #6b7280;
   font-weight: 500;
   font-style: italic;
-  flex-basis: 100%;
-  width: 100%;
+  grid-column: 1 / -1;
   text-align: center;
 }
 
 .fs-strength-card {
   background: var(--fs-accent-gradient);
-  border-radius: 12px;
+  border-radius: var(--fs-radius-card);
   padding: 16px 18px;
   box-shadow: 0 16px 40px rgba(37, 99, 235, 0.25);
+}
+
+.fs-strength-card.fs-weapon-foil {
+  background: var(--fs-gradient-foil);
+  box-shadow: 0 16px 40px rgba(5, 150, 105, 0.25);
+}
+
+.fs-strength-card.fs-weapon-epee,
+.fs-strength-card.fs-weapon-épée {
+  background: var(--fs-gradient-epee);
+  box-shadow: 0 16px 40px rgba(37, 99, 235, 0.25);
+}
+
+.fs-strength-card.fs-weapon-saber {
+  background: var(--fs-gradient-sabre);
+  box-shadow: 0 16px 40px rgba(220, 38, 38, 0.25);
 }
 
 .fs-strength-card:focus {
@@ -297,7 +344,7 @@
 }
 
 .fs-weapon-name {
-  margin: 0 0 12px 0;
+  margin: 0 0 10px 0;
   font-size: 18px;
   font-weight: 700;
   color: #ffffff;
@@ -307,17 +354,18 @@
 .fs-strength-data {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--fs-spacing-tight);
 }
 
 .fs-strength-item {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 8px 12px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
+  border-radius: var(--fs-radius-item);
 }
 
 .fs-strength-label {
@@ -326,6 +374,8 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  min-width: 42px;
+  flex-shrink: 0;
 }
 
 .fs-strength-value {
@@ -352,14 +402,9 @@
 }
 
 /* Responsive adjustments */
-@media (min-width: 768px) {
+@media (max-width: 520px) {
   .fs-strength-cards {
-    flex-direction: row;
-  }
-
-  .fs-strength-card {
-    flex: 1 1 280px;
-    min-width: 280px;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -379,5 +424,19 @@
 
   .fs-modal-title {
     font-size: 18px;
+  }
+}
+
+@media (max-width: 375px) {
+  .fs-modal-body {
+    padding: 16px;
+  }
+
+  .fs-profile-info {
+    padding: 14px;
+  }
+
+  .fs-strength-card {
+    padding: 14px 16px;
   }
 }
