@@ -28,6 +28,7 @@ The primary use case is short-term tracking for tournament preparation, where a 
   - `slug` (for building the profile URL)
   - `deStrength`
   - `poolStrength`
+  - `weapon` (primary weapon used for the stored strengths; preference order Epee -> Foil -> Saber)
 - **Freshness:** Data will be captured at the moment the user clicks the star. Real-time data fetching is not required for V1, as the primary use case is short-term. This approach ensures the tracked list loads instantly.
 
 ## 4. Implementation Plan

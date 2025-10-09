@@ -234,11 +234,20 @@
   gap: 14px;
 }
 
+.fs-profile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .fs-profile-name {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
   color: #111827;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
 }
 
 .fs-profile-name a {
@@ -294,6 +303,108 @@
   color: #6b7280;
   font-size: 14px;
   text-align: center;
+}
+
+.fs-track-toggle {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: var(--fs-radius-item);
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.fs-track-toggle svg {
+  display: block;
+}
+
+.fs-track-toggle:not([disabled]):hover {
+  background: rgba(239, 246, 255, 0.9);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #60a5fa;
+}
+
+.fs-track-toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.fs-track-toggle[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.fs-track-toggle-active {
+  background: rgba(250, 204, 21, 0.16);
+  border-color: rgba(250, 204, 21, 0.45);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.18);
+  color: #facc15;
+}
+
+/* Tracked list view */
+.fs-tracked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fs-tracked-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.fs-tracked-empty {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.fs-tracked-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fs-tracked-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--fs-radius-card);
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.fs-tracked-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+a.fs-tracked-name {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+a.fs-tracked-name:hover {
+  text-decoration: underline;
+}
+
+.fs-tracked-strength {
+  font-size: 14px;
+  color: #4b5563;
 }
 
 /* Old bouts card styles removed - now using compact summary below strength cards */

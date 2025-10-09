@@ -1,19 +1,29 @@
 {
   "manifest_version": 3,
   "name": "Fencer Strength Lookup",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Look up fencer strength ratings from FencingTracker.com via context menu",
   "permissions": [
     "contextMenus",
     "activeTab",
     "storage",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
   "host_permissions": [
     "https://fencingtracker.com/*"
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Fencer Strength",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "content_scripts": [
     {

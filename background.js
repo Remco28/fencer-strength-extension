@@ -19,6 +19,62 @@ const CONTENT_SCRIPT_FILES = [
 const CONTENT_STYLE_FILES = ['modal.css'];
 
 /**
+ * Handle popup request to show tracked fencers
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function handleShowTrackedRequest() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!tab || !tab.id) {
+      return { success: false, error: 'No active tab available.' };
+    }
+
+    const tabId = tab.id;
+
+    const sendMessage = async () => {
+      return new Promise((resolve, reject) => {
+        chrome.tabs.sendMessage(tabId, { action: 'showTrackedFencers' }, () => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(true);
+          }
+        });
+      });
+    };
+
+    try {
+      await sendMessage();
+      return { success: true };
+    } catch (error) {
+      const hasNoReceiver =
+        typeof error.message === 'string' &&
+        error.message.includes('Receiving end does not exist');
+
+      if (!hasNoReceiver) {
+        console.warn('Fencer Strength: failed to reach content script.', error);
+        return { success: false, error: 'Unable to reach this page. Try reloading the tab.' };
+      }
+
+      const injected = await injectContentScripts(tabId);
+      if (!injected) {
+        return {
+          success: false,
+          error: 'This page does not allow the extension to run. Try a standard web page.'
+        };
+      }
+
+      await sendMessage();
+      return { success: true };
+    }
+  } catch (error) {
+    console.error('Fencer Strength: unexpected error handling tracked list request.', error);
+    return { success: false, error: 'Unexpected error occurred. Please try again.' };
+  }
+}
+
+/**
  * Attempt to inject content scripts/styles into the active tab.
  * Falls back gracefully if the page does not permit injection.
  * @param {number} tabId
@@ -58,6 +114,25 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Lookup Fencer on FencingTracker',
     contexts: ['selection']
   });
+});
+
+// Handle popup message requests
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || message.action !== 'fsShowTrackedFencers') {
+    return;
+  }
+
+  handleShowTrackedRequest()
+    .then(result => sendResponse(result))
+    .catch(error => {
+      console.error('Fencer Strength: tracked list request failed.', error);
+      sendResponse({
+        success: false,
+        error: 'Unable to open tracked fencers. Reload the page and try again.'
+      });
+    });
+
+  return true; // Keep the message channel open for async response
 });
 
 // Handle context menu clicks
