@@ -17,6 +17,7 @@ Phase 4 – UI Polish & UX (see [ROADMAP.md](ROADMAP.md) for details)
 - **Smart caching**: 24-hour cache reduces API calls and improves speed
 - **Multi-weapon support**: View DE and Pool strength for epee, foil, saber
 - **Bout statistics**: Displays win/loss records when available
+- **Tracked fencers**: Star fencers to save them in a quick-access list from the toolbar popup
 - **Flexible name handling**: Handles various formats including
   `"First Last"`, `"Last, First"`, nicknames, and suffixes
 

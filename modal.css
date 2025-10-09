@@ -66,6 +66,18 @@
   overflow: hidden;
 }
 
+.fs-modal-container.fs-modal-compact {
+  max-width: 360px;
+}
+
+.fs-modal-container.fs-modal-compact .fs-modal-body {
+  padding: 16px 20px;
+}
+
+.fs-modal-container.fs-modal-compact .fs-modal-header {
+  padding: 16px 20px;
+}
+
 /* Modal header */
 .fs-modal-header {
   padding: 20px 24px;
@@ -351,7 +363,7 @@
 .fs-tracked-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .fs-tracked-title {
@@ -359,6 +371,10 @@
   font-size: 18px;
   font-weight: 600;
   color: #111827;
+}
+
+.fs-modal-container.fs-modal-compact .fs-tracked-title {
+  display: none;
 }
 
 .fs-tracked-empty {
@@ -373,22 +389,26 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  border-top: 1px solid #e5e7eb;
 }
 
 .fs-tracked-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: var(--fs-radius-card);
-  background: #ffffff;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.fs-tracked-item:hover {
+  background: rgba(248, 250, 252, 0.65);
 }
 
 .fs-tracked-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #111827;
 }
@@ -405,6 +425,15 @@ a.fs-tracked-name:hover {
 .fs-tracked-strength {
   font-size: 14px;
   color: #4b5563;
+}
+
+.fs-tracked-item:first-child {
+  padding-top: 0;
+}
+
+.fs-tracked-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 /* Old bouts card styles removed - now using compact summary below strength cards */

@@ -12,12 +12,11 @@ The primary use case is short-term tracking for tournament preparation, where a 
   - An **empty star** indicates the fencer is not currently tracked.
   - A **filled yellow star** indicates the fencer is tracked.
 - **Viewing Tracked Fencers:**
-  - The user will click the main extension icon in the browser toolbar to open a popup.
-  - This popup will contain a button, such as "View Tracked Fencers."
-  - Clicking this button will open a new modal displaying the list of all tracked fencers.
-- **List Format:** The list will be simple, with each entry showing:
-  - `Fencer Name (DE: [DE Strength], Pool: [Pool Strength])`
-  - The fencer's name will be a clickable link to their FencingTracker profile.
+  - The user clicks the browser toolbar icon to open a popup.
+  - The popup includes a `View Tracked Fencers` button that opens a compact modal overlay on the active page.
+- **List Format:** Minimal list (no cards) for quick scanning:
+  - `Fencer Name` (link to FencingTracker profile)
+  - `(DE: [DE Strength], Pool: [Pool Strength])` on the next line
 
 ## 3. Data Strategy
 

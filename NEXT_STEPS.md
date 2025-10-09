@@ -11,7 +11,7 @@
 ## Future Enhancements
 - [ ] Prototype fallback logic if search responses exceed the 10-result cap or paginate
 - [ ] Explore leveraging the background service worker for network calls if CORS blocks content script fetches
-- [ ] Assess feasibility of a quick-add favorites list within the modal for repeat lookups
+- [ ] Evaluate tracked list enhancements (sorting/pinning, clear-all option, keyboard shortcuts)
 - [ ] Plan sharper visual refinements for the modal (card contrast tweaks, typography polish, iconography update)
 
 ## Documentation

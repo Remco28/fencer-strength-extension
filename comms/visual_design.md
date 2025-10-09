@@ -68,6 +68,7 @@ The visual refresh prioritized tighter, more efficient use of space while mainta
 - **Strength Items:** Reduced padding from `10px 14px` to `8px 12px`
 - **Weapon Name Margin:** Reduced bottom margin from `12px` to `10px`
 - **Label Alignment:** Strength labels now reserve `min-width: 42px` with an 8px row gap to keep DE/Pool values vertically aligned.
+- **Tracked List Mode:** Compact variant (`.fs-modal-compact`) narrows the container to `360px`, hides the secondary heading, and renders each entry as a simple two-line row with only top/bottom borders for quick scanning.
 
 ## Responsive Breakpoints
 

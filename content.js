@@ -213,6 +213,8 @@ function hideModal() {
  */
 function showLoadingState() {
   hideAllStates();
+  setModalMode('default');
+  setModalTitle('Fencer Lookup');
   const loadingState = modalElement.querySelector('.fs-loading-state');
   loadingState.classList.remove('fs-hidden');
 }
@@ -223,6 +225,8 @@ function showLoadingState() {
  */
 function showErrorState(message) {
   hideAllStates();
+  setModalMode('default');
+  setModalTitle('Fencer Lookup');
   const errorState = modalElement.querySelector('.fs-error-state');
   const errorMessage = modalElement.querySelector('.fs-error-message');
   errorMessage.textContent = message;
@@ -235,6 +239,8 @@ function showErrorState(message) {
  */
 function showResultsList(results) {
   hideAllStates();
+  setModalMode('default');
+  setModalTitle('Fencer Lookup');
   const resultsContainer = modalElement.querySelector('.fs-results-list');
   const resultsList = modalElement.querySelector('.fs-results-items');
 
@@ -291,6 +297,8 @@ async function showProfileView(searchResult, lookupId) {
     currentStrengthData = strength;
 
     hideAllStates();
+    setModalMode('default');
+    setModalTitle('Fencer Lookup');
     const profileView = modalElement.querySelector('.fs-profile-view');
     const profileName = modalElement.querySelector('.fs-profile-name');
     const profileDetails = modalElement.querySelector('.fs-profile-details');
@@ -577,6 +585,8 @@ async function showTrackedFencerList() {
 
   showModal();
   hideAllStates();
+  setModalMode('tracked');
+  setModalTitle('Tracked Fencers');
 
   try {
     await renderTrackedList();
@@ -845,6 +855,40 @@ function setTrackedFencers(entries) {
 function findTrackedIndex(entries, id) {
   const normalizedId = String(id);
   return entries.findIndex(item => String(item.id) === normalizedId);
+}
+
+/**
+ * Set modal container mode
+ * @param {'default'|'tracked'} mode
+ */
+function setModalMode(mode) {
+  if (!modalElement) {
+    return;
+  }
+
+  const container = modalElement.querySelector('.fs-modal-container');
+  if (!container) {
+    return;
+  }
+
+  container.classList.toggle('fs-modal-compact', mode === 'tracked');
+}
+
+/**
+ * Update modal title text
+ * @param {string} title
+ */
+function setModalTitle(title) {
+  if (!modalElement) {
+    return;
+  }
+
+  const titleElement = modalElement.querySelector('.fs-modal-title');
+  if (!titleElement) {
+    return;
+  }
+
+  titleElement.textContent = title;
 }
 
 /**
