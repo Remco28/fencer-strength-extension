@@ -1,5 +1,10 @@
 /* Fencer Strength Modal Styles */
 
+/* Design tokens */
+:root {
+  --fs-accent-gradient: linear-gradient(140deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
+}
+
 /* Overlay backdrop */
 .fs-modal-overlay {
   position: fixed;
@@ -69,7 +74,7 @@
 
 /* Modal body */
 .fs-modal-body {
-  padding: 24px;
+  padding: 20px;
   overflow-y: auto;
   flex: 1;
 }
@@ -186,14 +191,14 @@
 }
 
 .fs-profile-info {
-  padding: 22px;
+  padding: 18px;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border-radius: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .fs-profile-name {
@@ -258,61 +263,44 @@
   text-align: center;
 }
 
-.fs-profile-record {
-  display: flex;
-  flex-wrap: wrap;
-}
+/* Old bouts card styles removed - now using compact summary below strength cards */
 
-.fs-profile-record-card {
-  flex: 1 1 220px;
-  background: linear-gradient(140deg, #2563eb 0%, #3b82f6 60%, #60a5fa 100%);
-  color: #f8fafc;
-  border-radius: 14px;
-  padding: 16px 20px;
-  box-shadow: 0 16px 40px rgba(37, 99, 235, 0.25);
-}
-
-.fs-profile-record-label {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-weight: 600;
-  opacity: 0.85;
-}
-
-.fs-profile-record-value {
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.1;
-  margin-top: 6px;
-}
-
-.fs-profile-record-sub {
-  font-size: 14px;
-  margin-top: 6px;
-  opacity: 0.9;
-  font-weight: 500;
-}
-
-/* Strength cards */
+/* Strength cards - hero gradient accent */
 .fs-strength-cards {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.fs-strength-explanation {
+  margin: 16px 0 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  font-style: italic;
+  flex-basis: 100%;
+  width: 100%;
+  text-align: center;
 }
 
 .fs-strength-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 16px;
-  background: white;
+  background: var(--fs-accent-gradient);
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 16px 40px rgba(37, 99, 235, 0.25);
+}
+
+.fs-strength-card:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
 }
 
 .fs-weapon-name {
   margin: 0 0 12px 0;
   font-size: 18px;
-  font-weight: 600;
-  color: #111827;
+  font-weight: 700;
+  color: #ffffff;
   text-transform: capitalize;
 }
 
@@ -326,22 +314,34 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  background: #f9fafb;
-  border-radius: 6px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
 }
 
 .fs-strength-label {
-  font-size: 14px;
-  color: #6b7280;
-  font-weight: 500;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .fs-strength-value {
-  font-size: 16px;
-  color: #111827;
-  font-weight: 600;
+  font-size: 20px;
+  color: #ffffff;
+  font-weight: 700;
 }
+
+.fs-strength-range {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+/* Bout summary moved to profile meta section - old styles removed */
 
 .fs-no-data {
   margin: 0;
@@ -352,6 +352,17 @@
 }
 
 /* Responsive adjustments */
+@media (min-width: 768px) {
+  .fs-strength-cards {
+    flex-direction: row;
+  }
+
+  .fs-strength-card {
+    flex: 1 1 280px;
+    min-width: 280px;
+  }
+}
+
 @media (max-width: 640px) {
   .fs-modal-container {
     width: 95%;

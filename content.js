@@ -295,6 +295,15 @@ async function showProfileView(searchResult, lookupId) {
         });
       }
 
+      // Add total bouts if available
+      if (history && history.bouts > 0) {
+        const boutsValue = `${history.bouts} (${history.wins}W / ${history.losses}L)`;
+        metaItems.push({
+          label: 'Total Bouts',
+          value: escapeHtml(boutsValue)
+        });
+      }
+
       profileMeta.innerHTML = metaItems.length
         ? metaItems
             .map(
@@ -309,19 +318,9 @@ async function showProfileView(searchResult, lookupId) {
         : '<div class="fs-profile-meta-placeholder">No profile details available</div>';
     }
 
+    // Hide the old bouts card container (no longer used)
     if (profileRecord) {
-      if (history && history.bouts > 0) {
-        const recordLine = `${history.wins}W / ${history.losses}L`;
-        profileRecord.innerHTML = `
-          <div class="fs-profile-record-card">
-            <div class="fs-profile-record-label">Total bouts</div>
-            <div class="fs-profile-record-value">${history.bouts}</div>
-            <div class="fs-profile-record-sub">${escapeHtml(recordLine)}</div>
-          </div>
-        `;
-      } else {
-        profileRecord.innerHTML = '';
-      }
+      profileRecord.innerHTML = '';
     }
 
     // Clear previous strength cards
@@ -337,24 +336,31 @@ async function showProfileView(searchResult, lookupId) {
         const card = document.createElement('div');
         card.className = 'fs-strength-card';
 
-        let strengthHtml = `<h4 class="fs-weapon-name">${capitalizeFirst(weapon)}</h4><div class="fs-strength-data">`;
+        let strengthHtml = `<h4 class="fs-weapon-name">${capitalizeFirst(weapon)}</h4>`;
+        strengthHtml += '<div class="fs-strength-data">';
 
         // DE strength
         if (weaponData.de) {
+          const { valueText, rangeText } = formatStrengthValue(weaponData.de);
           strengthHtml += `
             <div class="fs-strength-item">
               <span class="fs-strength-label">DE:</span>
-              <span class="fs-strength-value">${formatStrengthValue(weaponData.de)}</span>
+              <span class="fs-strength-value">
+                ${escapeHtml(valueText)}${rangeText ? `<span class="fs-strength-range">${escapeHtml(rangeText)}</span>` : ''}
+              </span>
             </div>
           `;
         }
 
         // Pool strength
         if (weaponData.pool) {
+          const { valueText, rangeText } = formatStrengthValue(weaponData.pool);
           strengthHtml += `
             <div class="fs-strength-item">
               <span class="fs-strength-label">Pool:</span>
-              <span class="fs-strength-value">${formatStrengthValue(weaponData.pool)}</span>
+              <span class="fs-strength-value">
+                ${escapeHtml(valueText)}${rangeText ? `<span class="fs-strength-range">${escapeHtml(rangeText)}</span>` : ''}
+              </span>
             </div>
           `;
         }
@@ -363,6 +369,12 @@ async function showProfileView(searchResult, lookupId) {
         card.innerHTML = strengthHtml;
         strengthCards.appendChild(card);
       });
+
+      // Add explanatory label at the bottom
+      const explanationLabel = document.createElement('p');
+      explanationLabel.className = 'fs-strength-explanation';
+      explanationLabel.textContent = 'Ranges show potential skill variation';
+      strengthCards.appendChild(explanationLabel);
     }
 
     // Show back button only if there were multiple results
@@ -381,24 +393,27 @@ async function showProfileView(searchResult, lookupId) {
 }
 
 /**
- * Format strength value for display
+ * Format strength value for display, splitting value and range
  * @param {Object} strengthData - Strength data with value and optional range
- * @returns {string} Formatted string
+ * @returns {Object} Object with valueText and rangeText properties
  */
 function formatStrengthValue(strengthData) {
-  if (!strengthData) return 'N/A';
+  if (!strengthData) {
+    return { valueText: 'N/A', rangeText: null };
+  }
 
   const { value, min, max, range } = strengthData;
 
-  let display = String(value);
+  const valueText = String(value);
+  let rangeText = null;
 
   if (min !== undefined && max !== undefined) {
-    display += ` (${min}-${max})`;
+    rangeText = `(${min}-${max})`;
   } else if (range !== undefined) {
-    display += ` (±${range})`;
+    rangeText = `(±${range})`;
   }
 
-  return display;
+  return { valueText, rangeText };
 }
 
 /**

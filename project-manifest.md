@@ -13,6 +13,9 @@
 ## 3. Implementation Assets
 - **Specs In Progress:** `specs/`
 - **Architecture Notes (TBD):** `docs/ARCHITECTURE.template.md` (create `docs/ARCHITECTURE.md` when architecture work begins)
+- **Development Guide:** `docs/development.md`
+- **Technical Notes:** `docs/technical-notes.md`
+- **Testing Guide:** `docs/testing-guide.md`
 
 ## 4. Reference
 - **Planning Doc:** `comms/planning.md`
