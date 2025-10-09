@@ -18,6 +18,45 @@ const CONTENT_SCRIPT_FILES = [
 
 const CONTENT_STYLE_FILES = ['modal.css'];
 
+const NO_RECEIVER_CODE = 'NO_RECEIVER';
+const PORT_CLOSED_MESSAGE = 'The message port closed before a response was received.';
+
+/**
+ * Send a message to a tab and normalize common error cases.
+ * Treats "message port closed" as a successful delivery (listener is fire-and-forget).
+ * @param {number} tabId
+ * @param {Object} payload
+ * @returns {Promise<void>}
+ */
+function sendMessageToTab(tabId, payload) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(tabId, payload, () => {
+      const lastError = chrome.runtime.lastError;
+      if (!lastError) {
+        resolve();
+        return;
+      }
+
+      const message = String(lastError.message || '');
+
+      if (message.includes(PORT_CLOSED_MESSAGE)) {
+        // Listener executed without returning a response; treat as success.
+        resolve();
+        return;
+      }
+
+      if (message.includes('Receiving end does not exist')) {
+        const error = new Error(message);
+        error.code = NO_RECEIVER_CODE;
+        reject(error);
+        return;
+      }
+
+      reject(new Error(message || 'Unknown messaging error'));
+    });
+  });
+}
+
 /**
  * Handle popup request to show tracked fencers
  * @returns {Promise<{success: boolean, error?: string}>}
@@ -32,27 +71,11 @@ async function handleShowTrackedRequest() {
 
     const tabId = tab.id;
 
-    const sendMessage = async () => {
-      return new Promise((resolve, reject) => {
-        chrome.tabs.sendMessage(tabId, { action: 'showTrackedFencers' }, () => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-          } else {
-            resolve(true);
-          }
-        });
-      });
-    };
-
     try {
-      await sendMessage();
+      await sendMessageToTab(tabId, { action: 'showTrackedFencers' });
       return { success: true };
     } catch (error) {
-      const hasNoReceiver =
-        typeof error.message === 'string' &&
-        error.message.includes('Receiving end does not exist');
-
-      if (!hasNoReceiver) {
+      if (error.code !== NO_RECEIVER_CODE) {
         console.warn('Fencer Strength: failed to reach content script.', error);
         return { success: false, error: 'Unable to reach this page. Try reloading the tab.' };
       }
@@ -65,10 +88,16 @@ async function handleShowTrackedRequest() {
         };
       }
 
-      await sendMessage();
+      await sendMessageToTab(tabId, { action: 'showTrackedFencers' });
       return { success: true };
     }
   } catch (error) {
+    const message = error && error.message ? String(error.message) : '';
+    if (message.includes(PORT_CLOSED_MESSAGE)) {
+      // Treat as success – content script handled the request without responding.
+      return { success: true };
+    }
+
     console.error('Fencer Strength: unexpected error handling tracked list request.', error);
     return { success: false, error: 'Unexpected error occurred. Please try again.' };
   }
