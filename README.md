@@ -1,70 +1,64 @@
-# Fencer Strength Chrome Extension
+# Fencer Strength Lookup
 
-**Instantly look up fencer strength ratings from FencingTracker.com**
+**Instantly look up fencer strength ratings and stats from any webpage.**
 
-A Chrome extension that retrieves real-time fencer profiles, strength
-ratings, and bout statistics via a simple context menu.
+This browser extension for Chrome, Firefox, and Edge lets you right-click a fencer's name on any website to instantly view their competitive profile, strength ratings, and win/loss record from FencingTracker.com.
 
-## Current Focus
+Keep tabs on your favorite athletes by starring them for quick access, and see a summary of their skills across all three weapons.
 
-Phase 4 – UI Polish & UX (see [ROADMAP.md](ROADMAP.md) for details)
+![Fencer Strength Lookup Modal](assets/modal.png)
 
 ## Features
 
-- **Context menu lookup**: Right-click selected text to search for fencers
-- **Live data retrieval**: Real-time profiles and strength ratings from
-  FencingTracker.com
-- **Smart caching**: 24-hour cache reduces API calls and improves speed
-- **Multi-weapon support**: View DE and Pool strength for epee, foil, saber
-- **Bout statistics**: Displays win/loss records when available
-- **Tracked fencers**: Star fencers to save them in a quick-access list from the toolbar popup
-- **Flexible name handling**: Handles various formats including
-  `"First Last"`, `"Last, First"`, nicknames, and suffixes
+-   **Instant Context Menu Lookup**: Highlight a name, right-click, and get immediate results.
+-   **Detailed Profiles**: View fencer details including club, country, and birth year.
+-   **Multi-Weapon Strength**: See DE and Pool strength ratings for Épée, Foil, and Saber.
+-   **Win/Loss Records**: Access career bout statistics at a glance.
+-   **Track Your Favorites**: Star fencers to add them to a quick-access list in the extension popup.
+-   **Smart Name Recognition**: Works with formats like `"First Last"`, `"Last, First"`, and even nicknames.
 
-## Get Started
+## How to Use
 
-### Installation (Development Mode)
+1.  **Highlight a fencer's name** on any webpage.
+2.  **Right-click** the selected text.
+3.  Choose **"Lookup Fencer on FencingTracker"** from the context menu.
 
-1. Clone or download this repository
-2. Open Chrome and navigate to `chrome://extensions/`
-3. Enable **Developer Mode** (toggle in top-right)
-4. Click **"Load unpacked"** and select the `fencer-strength-extension`
-   directory
-5. Extension appears with a blue icon
+![Right-click to look up a fencer](assets/rightclick.png)
 
-### Usage
+The extension will show a profile if it finds a single match or a list of options for multiple matches.
 
-1. **Select text** on any webpage (e.g., "Lee Kiefer")
-2. **Right-click** and choose **"Lookup Fencer on FencingTracker"**
-3. View results in the modal:
-   - **Single match**: Shows profile directly
-   - **Multiple matches**: Displays selection list
-   - **No match**: Shows helpful error message
+You can view your list of starred fencers at any time by clicking the extension icon in your browser toolbar.
 
-## Documentation
+![Tracked Fencers List](assets/tracklist.png)
 
-- **[Development Guide](docs/development.md)** - Project structure, debugging,
-  reloading after changes
-- **[Technical Notes](docs/technical-notes.md)** - Caching behavior, error
-  handling, rate limits, platform details
-- **[Testing Guide](docs/testing-guide.md)** - Test scenarios, validation
-  steps, cache verification
-- **[Roadmap](ROADMAP.md)** - Project phases and future plans
-- **[Next Steps](NEXT_STEPS.md)** - Current task checklist
+## Installation
 
-## Known Limitations
+You can load this extension into any Chromium-based browser (like Chrome, Edge, or Brave) or Firefox.
 
-- Displays domestic strength only (international ratings not yet parsed)
-- Placeholder icons (custom icons planned for future phases)
-- No offline mode (requires active internet connection)
+#### Chromium (Chrome, Edge)
 
-## Support & Questions
+1.  Download or clone this repository to your computer.
+2.  Open your browser and navigate to `chrome://extensions`.
+3.  Enable **Developer mode** using the toggle in the top-right corner.
+4.  Click **Load unpacked** and select the folder where you saved the extension.
+5.  The Fencer Strength Lookup icon will appear in your browser toolbar.
 
-For detailed information, refer to the documentation linked above. Technical
-contributors can also check the `comms/` directory for internal planning notes
-and research references.
+#### Firefox
+
+1.  Download or clone this repository to your computer.
+2.  Open Firefox and navigate to `about:debugging`.
+3.  Click **This Firefox** in the sidebar.
+4.  Click **Load Temporary Add-on...** and select the `manifest.json` file from the extension's folder.
+5.  The extension will be active until you restart Firefox.
+
+## Privacy
+
+This extension is designed with your privacy in mind:
+
+-   It only activates when you use the context menu or click the toolbar icon.
+-   It communicates exclusively with FencingTracker.com to retrieve fencer data.
+-   No personal data is collected, stored, or shared. All tracked fencer information is saved locally on your computer.
 
 ---
 
 **License**: MIT
-**Project Status**: Active development
