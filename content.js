@@ -541,7 +541,10 @@ function createModal() {
           <ul class="fs-results-items"></ul>
         </div>
         <div class="fs-tracked-list fs-hidden">
-          <h3 class="fs-tracked-title">Tracked Fencers</h3>
+          <div class="fs-tracked-actions">
+            <h3 class="fs-tracked-title">Tracked Fencers</h3>
+            <button class="fs-tracked-clear" type="button" aria-label="Clear all tracked fencers" disabled>Clear All</button>
+          </div>
           <p class="fs-tracked-empty fs-hidden">You haven't tracked any fencers yet.</p>
           <ul class="fs-tracked-items"></ul>
         </div>
@@ -609,6 +612,65 @@ function setupModalListeners() {
   if (trackButton) {
     trackButton.addEventListener('click', () => {
       toggleTrackCurrentFencer().catch(err => console.error('Track toggle error:', err));
+    });
+  }
+
+  const clearButton = modalElement.querySelector('.fs-tracked-clear');
+  if (clearButton) {
+    clearButton.addEventListener('click', async () => {
+      if (clearButton.disabled) {
+        return;
+      }
+
+      const confirmed = window.confirm('Remove all tracked fencers? This cannot be undone.');
+      if (!confirmed) {
+        return;
+      }
+
+      clearButton.disabled = true;
+
+      try {
+        await clearAllTrackedFencers();
+        setModalMode('tracked');
+        setModalTitle('Tracked Fencers');
+        await renderTrackedList();
+      } catch (error) {
+        console.error('Failed to clear tracked fencers:', error);
+        clearButton.disabled = false;
+      }
+    });
+  }
+
+  const trackedList = modalElement.querySelector('.fs-tracked-items');
+  if (trackedList) {
+    trackedList.addEventListener('click', async event => {
+      const removeButton = event.target.closest('.fs-tracked-remove');
+      if (!removeButton) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (removeButton.disabled) {
+        return;
+      }
+
+      const fencerId = removeButton.getAttribute('data-fencer-id');
+      if (!fencerId) {
+        return;
+      }
+
+      removeButton.disabled = true;
+
+      try {
+        await removeTrackedFencerById(fencerId);
+        setModalMode('tracked');
+        setModalTitle('Tracked Fencers');
+        await renderTrackedList();
+      } catch (error) {
+        console.error('Failed to remove tracked fencer:', error);
+        removeButton.disabled = false;
+      }
     });
   }
 }
@@ -1057,6 +1119,7 @@ async function renderTrackedList() {
 
   const listElement = container.querySelector('.fs-tracked-items');
   const emptyState = container.querySelector('.fs-tracked-empty');
+  const clearButton = container.querySelector('.fs-tracked-clear');
 
   if (!listElement || !emptyState) {
     return [];
@@ -1067,12 +1130,20 @@ async function renderTrackedList() {
 
   if (!tracked || tracked.length === 0) {
     emptyState.classList.remove('fs-hidden');
+    if (clearButton) {
+      clearButton.disabled = true;
+    }
     return [];
   }
 
   emptyState.classList.add('fs-hidden');
+  if (clearButton) {
+    clearButton.disabled = false;
+  }
 
-  const sorted = [...tracked].sort((a, b) =>
+  const normalized = [...tracked].map(normalizeTrackedEntryShape);
+
+  const sorted = normalized.sort((a, b) =>
     String(a.name || '').localeCompare(String(b.name || ''), undefined, {
       sensitivity: 'base'
     })
@@ -1082,13 +1153,34 @@ async function renderTrackedList() {
     const item = document.createElement('li');
     item.className = 'fs-tracked-item';
 
-    const nameElement = createTrackedNameElement(entry);
-    item.appendChild(nameElement);
+    const textWrapper = document.createElement('div');
+    textWrapper.className = 'fs-tracked-text';
 
-    const strengthElement = document.createElement('span');
-    strengthElement.className = 'fs-tracked-strength';
-    strengthElement.textContent = formatTrackedStrength(entry);
-    item.appendChild(strengthElement);
+    const nameRow = document.createElement('div');
+    nameRow.className = 'fs-tracked-row';
+
+    const nameElement = createTrackedNameElement(entry);
+    nameRow.appendChild(nameElement);
+
+    const removeButton = document.createElement('button');
+    removeButton.className = 'fs-tracked-remove';
+    removeButton.type = 'button';
+    removeButton.textContent = 'X';
+    removeButton.setAttribute('data-fencer-id', String(entry.id));
+    const ariaLabelName = entry.name || 'this fencer';
+    removeButton.setAttribute(
+      'aria-label',
+      `Remove ${ariaLabelName} from tracked list`
+    );
+    removeButton.setAttribute('title', 'Remove from tracked list');
+    nameRow.appendChild(removeButton);
+
+    textWrapper.appendChild(nameRow);
+
+    const strengthElement = renderTrackedWeaponSummaries(entry);
+    textWrapper.appendChild(strengthElement);
+
+    item.appendChild(textWrapper);
 
     listElement.appendChild(item);
   });
@@ -1120,7 +1212,8 @@ function buildTrackedEntry(profile, strength) {
     return null;
   }
 
-  const primary = selectPrimaryWeaponStrength(strength);
+  const weaponSummaries = collectWeaponSummaries(strength);
+  const primary = weaponSummaries[0] || selectPrimaryWeaponStrength(strength);
 
   return {
     id: String(profile.id),
@@ -1128,7 +1221,8 @@ function buildTrackedEntry(profile, strength) {
     slug: profile.slug || null,
     deStrength: primary.de,
     poolStrength: primary.pool,
-    weapon: primary.weapon
+    weapon: primary.weapon,
+    weaponSummaries
   };
 }
 
@@ -1138,6 +1232,16 @@ function buildTrackedEntry(profile, strength) {
  * @returns {Object} { weapon, de, pool }
  */
 function selectPrimaryWeaponStrength(strength) {
+  const summaries = collectWeaponSummaries(strength);
+  if (summaries.length > 0) {
+    const primary = summaries[0];
+    return {
+      weapon: primary.weapon,
+      de: primary.de,
+      pool: primary.pool
+    };
+  }
+
   const weapons = (strength && strength.weapons) || {};
   const weaponKeys = Object.keys(weapons);
 
@@ -1157,6 +1261,60 @@ function selectPrimaryWeaponStrength(strength) {
     de: extractStrengthValue(weaponData.de),
     pool: extractStrengthValue(weaponData.pool)
   };
+}
+
+/**
+ * Collect weapon summaries from strength data in priority order
+ * @param {Object} strength - Strength response
+ * @returns {Array} Weapon summary objects
+ */
+function collectWeaponSummaries(strength) {
+  const weapons = (strength && strength.weapons) || {};
+  const availableKeys = Object.keys(weapons);
+
+  if (availableKeys.length === 0) {
+    return [];
+  }
+
+  const priority = ['epee', 'foil', 'saber'];
+  const prioritized = priority.filter(key =>
+    Object.prototype.hasOwnProperty.call(weapons, key)
+  );
+  const extras = availableKeys
+    .filter(key => !priority.includes(key))
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  const ordered = [...prioritized, ...extras];
+  const summaries = [];
+
+  ordered.forEach((weaponKey, index) => {
+    const weaponData = weapons[weaponKey] || {};
+    const de = extractStrengthValue(weaponData.de);
+    const pool = extractStrengthValue(weaponData.pool);
+    const hasDe = de !== null && de !== undefined && de !== '';
+    const hasPool = pool !== null && pool !== undefined && pool !== '';
+
+    if (!hasDe && !hasPool) {
+      return;
+    }
+
+    summaries.push({
+      weapon: weaponKey,
+      de: hasDe ? de : null,
+      pool: hasPool ? pool : null,
+      isPrimary: index === 0
+    });
+  });
+
+  if (summaries.length === 0) {
+    return [];
+  }
+
+  summaries.forEach((summary, index) => {
+    summary.isPrimary = index === 0;
+  });
+
+  return summaries;
 }
 
 /**
@@ -1209,6 +1367,54 @@ function formatTrackedStrength(entry) {
 }
 
 /**
+ * Render weapon summaries chip container for tracked entry
+ * @param {Object} entry - Tracked fencer entry
+ * @returns {HTMLElement}
+ */
+function renderTrackedWeaponSummaries(entry) {
+  const container = document.createElement('div');
+  container.className = 'fs-tracked-strength';
+
+  const summaries = Array.isArray(entry.weaponSummaries)
+    ? entry.weaponSummaries
+    : [];
+
+  if (!summaries.length) {
+    container.textContent = formatTrackedStrength(entry);
+    return container;
+  }
+
+  summaries.forEach(summary => {
+    const chip = document.createElement('span');
+    chip.className = 'fs-tracked-weapon';
+    if (summary.isPrimary) {
+      chip.classList.add('fs-tracked-weapon-primary');
+    }
+
+    const weaponLabel = formatWeaponLabel(summary.weapon);
+    const parts = [];
+
+    if (summary.de !== null && summary.de !== undefined && summary.de !== '') {
+      parts.push(`DE ${formatStrengthSummaryValue(summary.de)}`);
+    }
+
+    if (
+      summary.pool !== null &&
+      summary.pool !== undefined &&
+      summary.pool !== ''
+    ) {
+      parts.push(`Pool ${formatStrengthSummaryValue(summary.pool)}`);
+    }
+
+    chip.textContent =
+      parts.length > 0 ? `${weaponLabel} · ${parts.join(' / ')}` : weaponLabel;
+    container.appendChild(chip);
+  });
+
+  return container;
+}
+
+/**
  * Format individual strength value for tracked summary
  * @param {string|null} value - Strength value
  * @returns {string}
@@ -1219,6 +1425,32 @@ function formatStrengthSummaryValue(value) {
   }
 
   return String(value);
+}
+
+/**
+ * Format weapon label for display
+ * @param {string|null} weapon - Weapon identifier
+ * @returns {string}
+ */
+function formatWeaponLabel(weapon) {
+  if (!weapon) {
+    return 'Unknown';
+  }
+
+  const map = {
+    epee: 'Épée',
+    épée: 'Épée',
+    foil: 'Foil',
+    saber: 'Saber',
+    sabre: 'Saber'
+  };
+
+  const lower = String(weapon).toLowerCase();
+  if (map[lower]) {
+    return map[lower];
+  }
+
+  return capitalizeFirst(String(weapon));
 }
 
 /**
@@ -1256,20 +1488,41 @@ function getTrackedFencers() {
  * @returns {Promise<void>}
  */
 function setTrackedFencers(entries) {
-  const sanitized = (entries || []).map(entry => ({
-    id: entry.id,
-    name: entry.name,
-    slug: entry.slug || null,
-    deStrength:
-      entry.deStrength === undefined || entry.deStrength === null
-        ? null
-        : entry.deStrength,
-    poolStrength:
-      entry.poolStrength === undefined || entry.poolStrength === null
-        ? null
-        : entry.poolStrength,
-    weapon: entry.weapon || null
-  }));
+  const sanitized = (entries || []).map(entry => {
+    const normalizedSummaries = normalizeTrackedWeaponSummaries(entry);
+    const primary = normalizedSummaries[0] || {};
+
+    const weapon =
+      entry.weapon !== undefined && entry.weapon !== null && entry.weapon !== ''
+        ? entry.weapon
+        : primary.weapon || null;
+    const deStrength =
+      entry.deStrength === undefined ||
+      entry.deStrength === null ||
+      entry.deStrength === ''
+        ? primary.de ?? null
+        : entry.deStrength;
+    const poolStrength =
+      entry.poolStrength === undefined ||
+      entry.poolStrength === null ||
+      entry.poolStrength === ''
+        ? primary.pool ?? null
+        : entry.poolStrength;
+
+    return {
+      id: entry.id,
+      name: entry.name,
+      slug: entry.slug || null,
+      deStrength:
+        deStrength === undefined || deStrength === null ? null : deStrength,
+      poolStrength:
+        poolStrength === undefined || poolStrength === null
+          ? null
+          : poolStrength,
+      weapon: weapon || null,
+      weaponSummaries: normalizedSummaries
+    };
+  });
 
   return new Promise((resolve, reject) => {
     chrome.storage.local.set(
@@ -1288,6 +1541,78 @@ function setTrackedFencers(entries) {
 }
 
 /**
+ * Remove a tracked fencer by ID
+ * @param {string|number} fencerId
+ * @returns {Promise<Array>}
+ */
+async function removeTrackedFencerById(fencerId) {
+  const normalizedId = String(fencerId);
+  const tracked = await getTrackedFencers();
+  const filtered = tracked.filter(entry => String(entry.id) !== normalizedId);
+
+  if (filtered.length === tracked.length) {
+    return tracked;
+  }
+
+  await setTrackedFencers(filtered);
+  await handleTrackedRemovalEffects(normalizedId);
+  return filtered;
+}
+
+/**
+ * Clear all tracked fencers from storage
+ * @returns {Promise<Array>}
+ */
+async function clearAllTrackedFencers() {
+  const tracked = await getTrackedFencers();
+  await setTrackedFencers([]);
+
+  if (currentFencer && currentFencer.id) {
+    const normalizedId = String(currentFencer.id);
+    const wasTracked =
+      isCurrentFencerTracked ||
+      tracked.some(entry => String(entry.id) === normalizedId);
+
+    if (wasTracked) {
+      await handleTrackedRemovalEffects(normalizedId);
+    }
+  }
+
+  return [];
+}
+
+/**
+ * Sync track toggle state after removal operations
+ * @param {string} normalizedId
+ * @returns {Promise<void>}
+ */
+async function handleTrackedRemovalEffects(normalizedId) {
+  if (!currentFencer || !currentFencer.id) {
+    return;
+  }
+
+  if (String(currentFencer.id) !== normalizedId) {
+    return;
+  }
+
+  isCurrentFencerTracked = false;
+
+  if (modalElement) {
+    const trackButton = modalElement.querySelector('.fs-track-toggle');
+    if (trackButton) {
+      trackButton.disabled = false;
+      renderTrackToggleState(trackButton, false);
+    }
+  }
+
+  try {
+    await refreshTrackToggle();
+  } catch (error) {
+    console.error('Failed to refresh track toggle after tracked fencer removal:', error);
+  }
+}
+
+/**
  * Find tracked fencer index by id
  * @param {Array} entries - Tracked entries
  * @param {string|number} id - Fencer ID
@@ -1296,6 +1621,100 @@ function setTrackedFencers(entries) {
 function findTrackedIndex(entries, id) {
   const normalizedId = String(id);
   return entries.findIndex(item => String(item.id) === normalizedId);
+}
+
+/**
+ * Normalize weapon summaries for storage/display
+ * @param {Object} entry - Tracked entry
+ * @returns {Array}
+ */
+function normalizeTrackedWeaponSummaries(entry) {
+  const rawSummaries = Array.isArray(entry.weaponSummaries)
+    ? entry.weaponSummaries
+    : [];
+
+  const cleaned = rawSummaries
+    .map(summary => {
+      if (!summary) {
+        return null;
+      }
+
+      const weapon =
+        summary.weapon === undefined ||
+        summary.weapon === null ||
+        summary.weapon === ''
+          ? null
+          : String(summary.weapon);
+      const de =
+        summary.de === undefined || summary.de === null || summary.de === ''
+          ? null
+          : String(summary.de);
+      const pool =
+        summary.pool === undefined || summary.pool === null || summary.pool === ''
+          ? null
+          : String(summary.pool);
+
+      if (!weapon && de === null && pool === null) {
+        return null;
+      }
+
+      return {
+        weapon,
+        de,
+        pool,
+        isPrimary: Boolean(summary.isPrimary)
+      };
+    })
+    .filter(Boolean);
+
+  if (cleaned.length === 0) {
+    const fallbackWeapon =
+      entry.weapon === undefined || entry.weapon === null || entry.weapon === ''
+        ? null
+        : String(entry.weapon);
+    const fallbackDe =
+      entry.deStrength === undefined ||
+      entry.deStrength === null ||
+      entry.deStrength === ''
+        ? null
+        : String(entry.deStrength);
+    const fallbackPool =
+      entry.poolStrength === undefined ||
+      entry.poolStrength === null ||
+      entry.poolStrength === ''
+        ? null
+        : String(entry.poolStrength);
+
+    if (fallbackWeapon || fallbackDe !== null || fallbackPool !== null) {
+      cleaned.push({
+        weapon: fallbackWeapon,
+        de: fallbackDe,
+        pool: fallbackPool,
+        isPrimary: true
+      });
+    }
+  }
+
+  if (cleaned.length > 0) {
+    cleaned.forEach((summary, index) => {
+      summary.isPrimary = index === 0;
+    });
+  }
+
+  return cleaned;
+}
+
+/**
+ * Normalize tracked entry shape ensuring weapon summaries exist
+ * @param {Object} entry - Tracked entry
+ * @returns {Object}
+ */
+function normalizeTrackedEntryShape(entry) {
+  const weaponSummaries = normalizeTrackedWeaponSummaries(entry);
+  return {
+    ...entry,
+    weaponSummaries
+  };
 }
 
 /**

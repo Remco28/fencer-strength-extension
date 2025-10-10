@@ -121,6 +121,14 @@ Test fencers who compete in multiple weapons:
 - DE and Pool values displayed per weapon
 - Missing values show "—" placeholder
 
+### Tracked List Management
+
+- Track at least two fencers (one single-weapon, one multi-weapon), open the tracked list from the popup, and confirm each entry shows a clean name row with inline weapon chips (`Épée · DE 2500 / Pool 1900`, etc.).
+- Remove an individual fencer using the inline remove button and confirm the list re-orders alphabetically without stale chips or console errors.
+- Use the `Clear All` button, accept the confirmation prompt, and verify the empty-state message returns and the button disables.
+- Navigate back to a profile that was removed and ensure the star toggle reads “Track this fencer.”
+- Tab through the tracked list controls (chips should be skipped, remove buttons and `Clear All` should receive focus) to validate keyboard accessibility.
+
 ### Responsive Behavior
 
 Test modal on different viewport sizes:
