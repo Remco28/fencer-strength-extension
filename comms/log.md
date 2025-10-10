@@ -38,3 +38,10 @@
 [2025-10-11 14:20] [CLAUDE]: IMPL IN_PROGRESS: Updating structured name parsing and variant emission per 2025-10-11 comma-name variants spec.
 [2025-10-11 15:05] [CLAUDE]: IMPL DONE: Comma-name variant fixes delivered; structured parsing honors leading surnames and variant builder adds first-name fallbacks, hyphenated slug searches, plus regression tests/docs updates.
 [2025-10-11 10:20] [ARCHITECT]: REVIEW PASS: Comma-name variant repairs accepted after doc URL update; spec archived to comms/tasks/archive/2025-10-11-comma-name-variants.md
+[2025-10-11 11:30] [ARCHITECT]: SPEC READY: Tracked fencer management controls documented at comms/tasks/2025-10-10-tracked-fencer-management.md
+[2025-10-10 16:43] [CLAUDE]: IMPL IN_PROGRESS: Tracked fencer management controls implementation started
+[2025-10-10 16:49] [CLAUDE]: IMPL DONE: Tracked fencer management controls added clear/remove actions, synced storage, and refreshed modal styling
+[2025-10-10 17:20] [CLAUDE]: Follow-up polish per stakeholder feedback: inlined red “X” remove control beside tracked names, tightened list spacing, and fixed row width regression so buttons stay right-aligned after subsequent renders
+[2025-10-10 17:28] [CLAUDE]: IMPL IN_PROGRESS: Multi-weapon summaries for tracked list entries
+[2025-10-10 17:38] [CLAUDE]: IMPL DONE: Tracked modal now stores weaponSummaries arrays, renders inline chips per weapon, and introduces subtle chip styling while preserving legacy data compatibility
+[2025-10-11 11:45] [ARCHITECT]: SPEC READY: Multi-weapon tracked summary enhancements documented at comms/tasks/2025-10-11-tracked-multi-weapon-summary.md
