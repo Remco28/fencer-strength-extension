@@ -8,23 +8,17 @@ Fencer Strength Chrome Extension.
 ```
 fencer-strength/
 ├── manifest.json              # Extension configuration
-├── background.js              # Service worker (context menu handler)
-├── content.js                 # Content script (modal UI orchestration)
+├── background.js              # Service worker (core logic, network requests)
+├── content.js                 # Content script (UI rendering and user interaction)
 ├── modal.css                  # Modal styling
-├── src/
-│   ├── api/
-│   │   ├── search.js         # Search API with variant fallback
-│   │   ├── profile.js        # Profile HTML parser
-│   │   ├── strength.js       # Strength table parser
-│   │   └── history.js        # Win/loss statistics parser
-│   ├── cache/
-│   │   └── cache.js          # TTL-based caching layer
-│   └── utils/
-│       └── normalize.js      # Query/name normalization utilities
-├── icons/                     # Extension icons
-├── docs/                      # Documentation
-└── comms/                     # Internal project communication
+├── src/                       # Modules used by the background service worker
+│   ├── api/                   # API clients for fencingtracker.com
+│   ├── cache/                 # Caching layer
+│   └── utils/                 # Helper utilities
+...
 ```
+
+*(Note: The `src` directory contains modules used by `background.js`. The content script communicates with the service worker to access their functionality; it does not use them directly.)*
 
 ## Reloading After Changes
 
@@ -55,10 +49,10 @@ To view content script logs:
 ### Network Monitoring
 
 To inspect API calls to FencingTracker:
-1. Open DevTools on any page (F12)
-2. Go to the Network tab
-3. Trigger a fencer lookup
-4. Filter by domain: `fencingtracker.com`
+1. Open the service worker's DevTools (from `chrome://extensions/`).
+2. Go to the **Network** tab inside the service worker's DevTools.
+3. Trigger a fencer lookup from a webpage.
+4. The requests made by the service worker to `fencingtracker.com` will be visible here.
 
 ### Cache Inspection
 

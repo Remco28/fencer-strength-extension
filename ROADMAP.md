@@ -1,28 +1,44 @@
 # Fencer Strength Chrome Extension Roadmap
 
 ## Phase 1 – Research Wrap-Up (Tech Advisor)
+- **Status:** ✅ Complete
 - **Goals:** Confirm live endpoints, selectors, and data availability; solidify name-normalization approach.
-- **Deliverables:** Updated `NEXT_STEPS.md` (all immediate tasks checked), vetted notes in `comms/research/fencingtracker.md`.
-- **Exit Criteria:** Endpoint behaviors verified against live site; cache key rules documented; risk log captured (rate limits, selector volatility).
 
 ## Phase 2 – Extension Skeleton (Architect + Developer)
+- **Status:** ✅ Complete
 - **Goals:** Scaffold Manifest V3 extension with service worker, content script, modal container, and utility modules.
-- **Deliverables:** `manifest.json`, `background.js`, `content.js`, `modal.css`, plus placeholder data service returning mocked search/profile payloads.
-- **Exit Criteria:** Extension loads via "Load Unpacked" with context menu visible, modal shell injects with mock data, no live network dependencies yet.
 
 ## Phase 3 – Data Integration (Developer)
+- **Status:** ⚠️ **Refactor Required**
 - **Goals:** Implement real fetch layer, HTML parsing, caching, and defensive retry/backoff logic.
-- **Deliverables:** Search API client, profile/strength/history parsers, normalization helpers, cache module leveraging `chrome.storage.local`.
-- **Exit Criteria:** ✅ Live lookup pipeline completes (search → profile → strength), multi-weapon strengths displayed, cache reused within TTL, graceful errors on 404/429.
+- **Note:** Initial integration is complete, but a critical architectural flaw was discovered. Network requests are made from the content script and will be blocked by browser CORS policy. **This phase is not considered complete until the refactor in Phase 3.5 is done.**
 
-## Phase 4 – UI Polish & UX (Designer + Developer)
-- **Goals:** Finalize modal styling, selection UX, animations, accessibility considerations, and multi-result handling.
-- **Deliverables:** Responsive modal with loading states, scrollable selection list, strength cards showing DE/Pool per weapon, error/empty states, and polished profile header.
-- **Progress Highlights:** Linked profile headers with quick stats, total-bout highlight card, and structured name parsing to support external feeds (e.g., FencingTimeLive formats).
-- **Next Focus:** Build out motion/animation polish, tighten accessibility (focus management, semantics), and enhance multi-result ergonomics.
-- **Exit Criteria:** QA script covering single/multi/no results passes; UI meets design brief with brand colors; keyboard dismissal (Esc/outside click) functional.
+## Phase 3.5 – Critical Refactor (Tech Advisor + Developer)
+- **Status:** 🟧 **In Progress / Next Up**
+- **Goals:** Correct the architectural flaw by moving all network requests to the background service worker.
+- **Deliverables:**
+  - `manifest.json` updated to remove API scripts from `content_scripts`.
+  - `background.js` updated to handle API calls via message passing.
+  - `content.js` updated to delegate API calls to the background script.
+- **Exit Criteria:** All `fetch` calls originate from the background script, and the UI correctly displays live data received via messaging.
+
+## Phase 4 – MVP Hardening & Release Prep (Developer)
+- **Status:** ⬜ Not Started
+- **Goals:** Ensure the extension is stable, accessible, and distributable for a Minimum Viable Product (MVP) release.
+- **Deliverables:**
+  - A fully keyboard-accessible modal.
+  - A `.zip` package for distribution.
+  - Updated `README.md` with clear installation instructions.
+- **Exit Criteria:** All core functionality is usable with a keyboard; users can successfully install and run the extension from the packaged file.
 
 ## Phase 5 – Validation & Handoff (Tech Advisor + Developer)
+- **Status:** ⬜ Not Started
 - **Goals:** Execute regression checklist, optional automated smoke tests, and documentation updates for handoff/pause readiness.
-- **Deliverables:** Test log (manual and automated), updated `comms/planning.md`, lightweight user guide for using the extension, known-issues list.
-- **Exit Criteria:** No blocking defects; roadmap items referenced as complete; repo ready for pause or deployment prep.
+- **Exit Criteria:** No blocking defects; repo ready for pause or deployment prep.
+
+## Post-MVP Enhancements (Future)
+- **UI Polish:** Implement animations, motion, and other visual refinements.
+- **Feature Enhancements:**
+  - Add pagination or fallback logic for searches with >10 results.
+  - Enhance the tracked fencers list (sorting, pinning, etc.).
+- **Documentation:** Draft detailed UX notes and guides.

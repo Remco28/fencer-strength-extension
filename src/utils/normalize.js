@@ -109,13 +109,53 @@ function normalizeQuery(query) {
  * @returns {string} Hyphenated slug
  */
 function createSlug(name) {
-  return name
+  if (!name) return '';
+
+  // Preserve case/diacritics and nickname parentheses to match fencingtracker slugs; only strip punctuation they reject.
+  const collapsedWhitespace = String(name).trim().replace(/\s+/g, ' ');
+  const normalizedDashes = collapsedWhitespace.replace(/[\u2012-\u2015]/g, '-');
+  const sanitized = normalizedDashes.replace(/[^\p{L}\p{N}\s\-()]/gu, '');
+
+  let result = '';
+  let parenDepth = 0;
+
+  for (let i = 0; i < sanitized.length; i++) {
+    const char = sanitized[i];
+
+    if (char === '(') {
+      parenDepth++;
+      result += char;
+      continue;
+    }
+
+    if (char === ')') {
+      if (parenDepth > 0) {
+        parenDepth--;
+      }
+      result += char;
+      continue;
+    }
+
+    if (char === ' ') {
+      const nextChar = sanitized[i + 1];
+      if (parenDepth > 0) {
+        result += ' ';
+      } else if (nextChar === '(') {
+        result += ' ';
+      } else if (nextChar) {
+        result += '-';
+      }
+      continue;
+    }
+
+    result += char;
+  }
+
+  return result
+    .replace(/-+/g, '-')   // Collapse multiple hyphens
+    .replace(/\s{2,}/g, ' ') // Collapse extra spaces (e.g., multiple spaces inside parens)
     .trim()
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '') // Remove punctuation
-    .replace(/\s+/g, '-')      // Replace spaces with hyphens
-    .replace(/-+/g, '-')       // Collapse multiple hyphens
-    .replace(/^-|-$/g, '');    // Trim leading/trailing hyphens
+    .replace(/^-|-$/g, ''); // Trim leading/trailing hyphens
 }
 
 /**
@@ -144,7 +184,31 @@ function buildSlugFromName(name) {
 
   const structured = parseStructuredExternalName(trimmed);
   if (structured) {
-    const base = `${structured.firstNames} ${structured.lastName}`.trim();
+    const parts = [];
+
+    if (structured.firstNames) {
+      parts.push(structured.firstNames);
+    }
+
+    if (structured.nickname) {
+      parts.push(`(${structured.nickname})`);
+    }
+
+    if (structured.lastName) {
+      parts.push(structured.lastName);
+    }
+
+    let base = parts.join(' ').trim();
+
+    if (structured.suffix) {
+      base = `${base} ${structured.suffix}`.trim();
+    }
+
+    const candidate = base ? createSlug(base) : '';
+    if (candidate) {
+      return candidate;
+    }
+
     return createSlug(base || trimmed);
   }
 
@@ -227,6 +291,55 @@ function parseStructuredExternalName(rawName) {
   // Remove parentheses content and collapse whitespace
   const withoutNick = rawName.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
   if (!withoutNick) return null;
+
+  const commaParts = withoutNick
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean);
+
+  if (commaParts.length >= 2) {
+    const surnameTokens = commaParts[0]
+      .split(' ')
+      .map(token => token.replace(/[.,]+$/g, ''))
+      .filter(Boolean);
+
+    const remainderJoined = commaParts.slice(1).join(' ').replace(/\s+/g, ' ').trim();
+    const remainderTokens = remainderJoined
+      .split(' ')
+      .map(token => token.replace(/[.,]+$/g, ''))
+      .filter(Boolean);
+
+    let suffix = null;
+
+    if (remainderTokens.length > 0) {
+      const candidateSuffix = remainderTokens[remainderTokens.length - 1];
+      if (NAME_SUFFIXES.has(candidateSuffix.toLowerCase())) {
+        suffix = remainderTokens.pop();
+      }
+    }
+
+    let givenTokens = remainderTokens;
+
+    if (givenTokens.length === 0 && nickname) {
+      givenTokens = [nickname];
+    }
+
+    if (surnameTokens.length > 0 && givenTokens.length > 0) {
+      const formattedLastName = surnameTokens.map(formatNameToken).join(' ').trim();
+      const formattedFirstNames = givenTokens.map(formatNameToken).join(' ').trim();
+      const formattedSuffix = suffix ? suffix.replace(/,$/, '') : null;
+      const formattedNickname = nickname ? formatNameToken(nickname) : null;
+
+      if (formattedLastName && formattedFirstNames) {
+        return {
+          lastName: formattedLastName,
+          firstNames: formattedFirstNames,
+          suffix: formattedSuffix,
+          nickname: formattedNickname
+        };
+      }
+    }
+  }
 
   const tokens = withoutNick
     .split(' ')
@@ -321,6 +434,44 @@ function buildStructuredVariants(parts) {
     : `${lastName}, ${firstNames}`.trim();
   pushVariant(variants, commaVariant);
 
+  const firstTokens = firstNames.split(' ').filter(Boolean);
+  const firstToken = firstTokens[0];
+
+  if (firstToken) {
+    const firstLast = `${firstToken} ${lastName}`.trim();
+    pushVariant(variants, firstLast);
+
+    if (suffix) {
+      pushVariant(variants, `${firstLast} ${suffix}`.trim());
+    }
+
+    const commaFirst = `${lastName}, ${firstToken}`.trim();
+    pushVariant(variants, commaFirst);
+
+    if (suffix) {
+      pushVariant(variants, `${lastName}, ${firstToken} ${suffix}`.trim());
+    }
+  }
+
+  const normalizedFirstNames = firstNames.replace(/\s+/g, ' ').trim();
+  const normalizedLastName = lastName.replace(/\s+/g, ' ').trim();
+
+  if (normalizedFirstNames && normalizedLastName) {
+    const hyphenated = `${normalizedFirstNames}-${normalizedLastName}`.trim();
+    pushVariant(variants, hyphenated);
+
+    if (suffix) {
+      pushVariant(variants, `${hyphenated} ${suffix}`.trim());
+    }
+
+    const commaHyphenated = `${normalizedLastName}, ${hyphenated}`.trim();
+    pushVariant(variants, commaHyphenated);
+
+    if (suffix) {
+      pushVariant(variants, `${normalizedLastName}, ${hyphenated} ${suffix}`.trim());
+    }
+  }
+
   const firstNamesNoTrailingInitials = stripTrailingInitials(firstNames);
   if (firstNamesNoTrailingInitials && firstNamesNoTrailingInitials !== firstNames) {
     const trimmedPrimary = `${firstNamesNoTrailingInitials} ${lastName}`.trim();
@@ -354,8 +505,8 @@ function isLikelySurnameToken(token) {
     return false;
   }
 
-  // Treat 1-2 letter abbreviations as likely initials, not surname
-  if (sanitized.length <= 2 && sanitized === sanitized.toUpperCase()) {
+  // Treat single-letter abbreviations as likely initials, not surname
+  if (sanitized.length === 1 && sanitized === sanitized.toUpperCase()) {
     return false;
   }
 
@@ -399,4 +550,12 @@ function pushVariant(list, value) {
   if (!value) return;
   if (list.includes(value)) return;
   list.push(value);
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    normalizeQuery,
+    parseStructuredExternalName,
+    buildStructuredVariants
+  };
 }

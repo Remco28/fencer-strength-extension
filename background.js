@@ -1,20 +1,91 @@
 // Service worker for Fencer Strength extension
 // Manages context menu and message passing to content scripts
 
-// Context menu ID
-const CONTEXT_MENU_ID = 'lookup-fencer';
+// ============================================================================
+// Phase 1: Load API helpers in background context
+// ============================================================================
+// Import all network/cache helper modules so the background service worker
+// can own cross-origin requests in future phases. This phase keeps the
+// content script flow intact; Phase 2 will wire message routing to use these.
+//
+// Loaded modules: base-url config, cache layer, normalization utilities,
+// and API functions (search, profile, strength, history).
+// ============================================================================
 
-// Assets to inject when content script not yet present
-const CONTENT_SCRIPT_FILES = [
+importScripts(
   'src/config/base-url.js',
   'src/cache/cache.js',
   'src/utils/normalize.js',
   'src/api/search.js',
   'src/api/profile.js',
   'src/api/strength.js',
-  'src/api/history.js',
-  'content.js'
-];
+  'src/api/history.js'
+);
+
+// ============================================================================
+// Namespaced API Surface
+// ============================================================================
+// Construct a namespaced API object that collects all imported helper functions.
+// This will be used in Phase 2 when message routing is wired to the background.
+// Validates that all expected functions exist; throws an error if any are missing.
+// ============================================================================
+
+/**
+ * Validate and construct the background API surface.
+ * @returns {Object} API object with search, profile, strength, history, and cache functions
+ * @throws {Error} if any required function is missing
+ */
+function buildBackgroundApi() {
+  const requiredFunctions = {
+    // Search (JSON, no parsing needed)
+    searchFencers: typeof searchFencers === 'function' ? searchFencers : null,
+
+    // Cached HTML getters (background-safe, with 24-hour cache + slug fallback)
+    getProfile: typeof getProfile === 'function' ? getProfile : null,
+    getStrength: typeof getStrength === 'function' ? getStrength : null,
+    getHistory: typeof getHistory === 'function' ? getHistory : null,
+
+    // Cache management
+    purgeExpired: typeof purgeExpired === 'function' ? purgeExpired : null,
+
+    // Base URL getter for environment consistency
+    getBaseUrl: () => globalThis.FENCINGTRACKER_BASE_URL || 'https://fencingtracker.com'
+  };
+
+  const missing = Object.keys(requiredFunctions).filter(key => !requiredFunctions[key]);
+
+  if (missing.length > 0) {
+    const error = `Fencer Strength: Failed to load required API functions: ${missing.join(', ')}`;
+    console.error(error);
+    throw new Error(error);
+  }
+
+  console.log('Fencer Strength: Background API loaded successfully with functions:', Object.keys(requiredFunctions));
+
+  return requiredFunctions;
+}
+
+/**
+ * Retrieve the background API surface.
+ * Future phases will call this to access the API functions.
+ * @returns {Object} API object with all helper functions
+ */
+function getBackgroundApi() {
+  return self.fsApi;
+}
+
+// Build and attach the API surface to the service worker global scope
+try {
+  self.fsApi = buildBackgroundApi();
+} catch (error) {
+  console.error('Fencer Strength: Critical error during API initialization. Extension may not function correctly.', error);
+}
+
+// Context menu ID
+const CONTEXT_MENU_ID = 'lookup-fencer';
+
+// Assets to inject when content script not yet present
+const CONTENT_SCRIPT_FILES = ['content.js'];
 
 const CONTENT_STYLE_FILES = ['modal.css'];
 
@@ -55,6 +126,64 @@ function sendMessageToTab(tabId, payload) {
       reject(new Error(message || 'Unknown messaging error'));
     });
   });
+}
+
+/**
+ * Handle background API call delegation from content script
+ * @param {Object} message - Message with functionName and args
+ * @returns {Promise<{success: boolean, data?: any, error?: string}>}
+ */
+async function handleBackgroundApiCall(message) {
+  const { functionName, args } = message;
+
+  if (!functionName || typeof functionName !== 'string') {
+    return {
+      success: false,
+      error: 'Invalid API call: functionName is required.'
+    };
+  }
+
+  const api = getBackgroundApi();
+  if (!api) {
+    console.error('Fencer Strength: Background API not initialized.');
+    return {
+      success: false,
+      error: 'Background API not available.'
+    };
+  }
+
+  const apiFunction = api[functionName];
+  if (typeof apiFunction !== 'function') {
+    console.error(`Fencer Strength: Unknown API function "${functionName}".`);
+    return {
+      success: false,
+      error: `Unknown API function: ${functionName}`
+    };
+  }
+
+  try {
+    const functionArgs = Array.isArray(args) ? args : [];
+    const result = await apiFunction(...functionArgs);
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    // Log unexpected errors but don't spam for user-facing errors
+    const isUserError =
+      error.message.includes('404') ||
+      error.message.includes('Not found') ||
+      error.message.includes('No fencers');
+
+    if (!isUserError) {
+      console.error(`Fencer Strength: API function "${functionName}" failed.`, error);
+    }
+
+    return {
+      success: false,
+      error: error.message || 'API call failed.'
+    };
+  }
 }
 
 /**
@@ -145,23 +274,41 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Handle popup message requests
+// Handle popup message requests and API delegation
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || message.action !== 'fsShowTrackedFencers') {
+  if (!message || !message.action) {
     return;
   }
 
-  handleShowTrackedRequest()
-    .then(result => sendResponse(result))
-    .catch(error => {
-      console.error('Fencer Strength: tracked list request failed.', error);
-      sendResponse({
-        success: false,
-        error: 'Unable to open tracked fencers. Reload the page and try again.'
+  // Handle tracked fencers request
+  if (message.action === 'fsShowTrackedFencers') {
+    handleShowTrackedRequest()
+      .then(result => sendResponse(result))
+      .catch(error => {
+        console.error('Fencer Strength: tracked list request failed.', error);
+        sendResponse({
+          success: false,
+          error: 'Unable to open tracked fencers. Reload the page and try again.'
+        });
       });
-    });
 
-  return true; // Keep the message channel open for async response
+    return true; // Keep the message channel open for async response
+  }
+
+  // Handle background API delegation
+  if (message.action === 'fsCallBackgroundApi') {
+    handleBackgroundApiCall(message)
+      .then(result => sendResponse(result))
+      .catch(error => {
+        console.error('Fencer Strength: background API call failed.', error);
+        sendResponse({
+          success: false,
+          error: error.message || 'Background API call failed.'
+        });
+      });
+
+    return true; // Keep the message channel open for async response
+  }
 });
 
 // Handle context menu clicks

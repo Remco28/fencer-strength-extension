@@ -28,16 +28,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": [
-        "src/config/base-url.js",
-        "src/cache/cache.js",
-        "src/utils/normalize.js",
-        "src/api/search.js",
-        "src/api/profile.js",
-        "src/api/strength.js",
-        "src/api/history.js",
-        "content.js"
-      ],
+      "js": ["content.js"],
       "css": ["modal.css"]
     }
   ],

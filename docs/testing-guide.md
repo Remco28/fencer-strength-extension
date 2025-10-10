@@ -41,6 +41,12 @@ Test different query formats to validate normalization:
 - **"XIAO Leon (Ruibo)"** - Parenthetical nickname with caps
 - **"SIMMONS Ariel (Ari) J."** - Suffix with middle initial
 
+### Regression Checks
+
+- **"Suico, Kyubi Emmanuelle"** - Confirms comma-formatted names resolve to the profile at https://fencingtracker.com/p/100225219/Kyubi%20Emmanuelle-Suico and emit the hyphenated variant (`Kyubi Emmanuelle-Suico`).
+- **"Smith, Grace Logan"** - Verifies multi-given-name variants reach https://fencingtracker.com/p/100198963/Grace-Smith and include the `Grace Smith` fallback.
+- **"EWART Jr. Stephen P."** - Ensures suffix handling still returns https://fencingtracker.com/p/100210509/Stephen-P-Ewart-Jr and keeps the first-name fallback variants.
+
 ### No Results
 
 Test queries that should return no matches:
