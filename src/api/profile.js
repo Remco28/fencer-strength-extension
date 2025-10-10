@@ -4,11 +4,11 @@
 const PROFILE_BASE_URL = globalThis.FENCINGTRACKER_BASE_URL || 'https://fencingtracker.com';
 
 /**
- * Get fencer profile data
+ * Get fencer profile HTML with caching and slug fallback
  * @param {string} id - Fencer ID
  * @param {string} slug - Name slug
  * @param {string} fallbackName - Optional fallback name for slug regeneration
- * @returns {Promise<Object>} Profile data
+ * @returns {Promise<{html: string, id: string, slug: string}>} Cached or fetched HTML
  */
 async function getProfile(id, slug, fallbackName = null) {
   const cacheKey = getProfileCacheKey(id);
@@ -22,29 +22,33 @@ async function getProfile(id, slug, fallbackName = null) {
 
   // Fetch from API
   try {
-    const profile = await fetchProfile(id, slug);
-    await setCached(cacheKey, profile);
-    return profile;
+    const result = await fetchProfileHtml(id, slug);
+    await setCached(cacheKey, result);
+    return result;
   } catch (error) {
     // Try with regenerated slug if we have a fallback name
     if (error.message.includes('404') && fallbackName) {
       console.warn(`Profile 404 for ${id}/${slug}, trying regenerated slug...`);
       const newSlug = createSlug(fallbackName);
-      const profile = await fetchProfile(id, newSlug);
-      await setCached(cacheKey, profile);
-      return profile;
+      if (!newSlug) {
+        throw error;
+      }
+      const result = await fetchProfileHtml(id, newSlug);
+      const updatedResult = { ...result, slug: newSlug };
+      await setCached(cacheKey, updatedResult);
+      return updatedResult;
     }
     throw error;
   }
 }
 
 /**
- * Fetch and parse profile HTML with retry logic
+ * Fetch profile HTML with retry logic (background-safe, no parsing)
  * @param {string} id - Fencer ID
  * @param {string} slug - Name slug
- * @returns {Promise<Object>} Parsed profile data
+ * @returns {Promise<{html: string, id: string, slug: string}>} Raw HTML and metadata
  */
-async function fetchProfile(id, slug) {
+async function fetchProfileHtml(id, slug) {
   const url = `${PROFILE_BASE_URL}/p/${id}/${slug}`;
   let lastError = null;
 
@@ -78,7 +82,7 @@ async function fetchProfile(id, slug) {
       }
 
       const html = await response.text();
-      return parseProfileHtml(html, id, slug);
+      return { html, id, slug };
     } catch (error) {
       lastError = error;
       if (attempt === 0 && !error.message.includes('404')) {
@@ -89,6 +93,18 @@ async function fetchProfile(id, slug) {
   }
 
   throw lastError || new Error('Profile fetch failed after retries');
+}
+
+/**
+ * DEPRECATED: Fetch and parse profile HTML (kept for backward compatibility if needed)
+ * Use fetchProfileHtml and parse in content script instead
+ * @param {string} id - Fencer ID
+ * @param {string} slug - Name slug
+ * @returns {Promise<Object>} Parsed profile data
+ */
+async function fetchProfile(id, slug) {
+  const result = await fetchProfileHtml(id, slug);
+  return parseProfileHtml(result.html, result.id, result.slug);
 }
 
 /**

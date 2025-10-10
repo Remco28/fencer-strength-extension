@@ -4,10 +4,10 @@
 const STRENGTH_BASE_URL = globalThis.FENCINGTRACKER_BASE_URL || 'https://fencingtracker.com';
 
 /**
- * Get fencer strength data
+ * Get fencer strength HTML with caching
  * @param {string} id - Fencer ID
  * @param {string} slug - Name slug
- * @returns {Promise<Object>} Strength data
+ * @returns {Promise<{html: string}>} Cached or fetched HTML
  */
 async function getStrength(id, slug) {
   const cacheKey = getStrengthCacheKey(id);
@@ -20,18 +20,18 @@ async function getStrength(id, slug) {
   }
 
   // Fetch from API
-  const strength = await fetchStrength(id, slug);
-  await setCached(cacheKey, strength);
-  return strength;
+  const result = await fetchStrengthHtml(id, slug);
+  await setCached(cacheKey, result);
+  return result;
 }
 
 /**
- * Fetch and parse strength HTML with retry logic
+ * Fetch strength HTML with retry logic (background-safe, no parsing)
  * @param {string} id - Fencer ID
  * @param {string} slug - Name slug
- * @returns {Promise<Object>} Parsed strength data
+ * @returns {Promise<{html: string}>} Raw HTML
  */
-async function fetchStrength(id, slug) {
+async function fetchStrengthHtml(id, slug) {
   const url = `${STRENGTH_BASE_URL}/p/${id}/${slug}/strength`;
   let lastError = null;
 
@@ -65,7 +65,7 @@ async function fetchStrength(id, slug) {
       }
 
       const html = await response.text();
-      return parseStrengthHtml(html);
+      return { html };
     } catch (error) {
       lastError = error;
       if (attempt === 0 && !error.message.includes('404')) {
@@ -76,6 +76,18 @@ async function fetchStrength(id, slug) {
   }
 
   throw lastError || new Error('Strength fetch failed after retries');
+}
+
+/**
+ * DEPRECATED: Fetch and parse strength HTML (kept for backward compatibility)
+ * Use fetchStrengthHtml and parse in content script instead
+ * @param {string} id - Fencer ID
+ * @param {string} slug - Name slug
+ * @returns {Promise<Object>} Parsed strength data
+ */
+async function fetchStrength(id, slug) {
+  const result = await fetchStrengthHtml(id, slug);
+  return parseStrengthHtml(result.html);
 }
 
 /**

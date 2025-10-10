@@ -11,14 +11,14 @@
 - **Next Steps Checklist:** `NEXT_STEPS.md`
 
 ## 3. Implementation Assets
-- **Specs In Progress:** `specs/`
-- **Architecture Notes (TBD):** `docs/ARCHITECTURE.template.md` (create `docs/ARCHITECTURE.md` when architecture work begins)
+- **Task Specifications:** `comms/tasks/`
+- **Architecture Overview:** `ARCHITECTURE.md`
 - **Development Guide:** `docs/development.md`
 - **Technical Notes:** `docs/technical-notes.md`
 - **Testing Guide:** `docs/testing-guide.md`
 
 ## 4. Reference
-- **Planning Doc:** `comms/planning.md`
+- **Archived Planning Doc:** `comms/archive/planning.md`
 - **Team Roles:** `comms/roles/`
 - **Research Sources:** `comms/research/fencingtracker.md`
 

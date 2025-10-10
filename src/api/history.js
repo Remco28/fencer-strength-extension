@@ -4,10 +4,10 @@
 const HISTORY_BASE_URL = globalThis.FENCINGTRACKER_BASE_URL || 'https://fencingtracker.com';
 
 /**
- * Get fencer history/win-loss data
+ * Get fencer history HTML with caching
  * @param {string} id - Fencer ID
  * @param {string} slug - Name slug
- * @returns {Promise<Object>} History data
+ * @returns {Promise<{html: string}>} Cached or fetched HTML
  */
 async function getHistory(id, slug) {
   const cacheKey = getHistoryCacheKey(id);
@@ -20,18 +20,18 @@ async function getHistory(id, slug) {
   }
 
   // Fetch from API
-  const history = await fetchHistory(id, slug);
-  await setCached(cacheKey, history);
-  return history;
+  const result = await fetchHistoryHtml(id, slug);
+  await setCached(cacheKey, result);
+  return result;
 }
 
 /**
- * Fetch and parse history HTML with retry logic
+ * Fetch history HTML with retry logic (background-safe, no parsing)
  * @param {string} id - Fencer ID
  * @param {string} slug - Name slug
- * @returns {Promise<Object>} Parsed history data
+ * @returns {Promise<{html: string}>} Raw HTML
  */
-async function fetchHistory(id, slug) {
+async function fetchHistoryHtml(id, slug) {
   const url = `${HISTORY_BASE_URL}/p/${id}/${slug}/history`;
   let lastError = null;
 
@@ -65,7 +65,7 @@ async function fetchHistory(id, slug) {
       }
 
       const html = await response.text();
-      return parseHistoryHtml(html);
+      return { html };
     } catch (error) {
       lastError = error;
       if (attempt === 0 && !error.message.includes('404')) {
@@ -76,6 +76,18 @@ async function fetchHistory(id, slug) {
   }
 
   throw lastError || new Error('History fetch failed after retries');
+}
+
+/**
+ * DEPRECATED: Fetch and parse history HTML (kept for backward compatibility)
+ * Use fetchHistoryHtml and parse in content script instead
+ * @param {string} id - Fencer ID
+ * @param {string} slug - Name slug
+ * @returns {Promise<Object>} Parsed history data
+ */
+async function fetchHistory(id, slug) {
+  const result = await fetchHistoryHtml(id, slug);
+  return parseHistoryHtml(result.html);
 }
 
 /**
