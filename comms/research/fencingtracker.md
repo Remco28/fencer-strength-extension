@@ -5,7 +5,7 @@
 - `limit` is accepted but responses are capped at 10 rows; fall back to HTML search when more results are needed.
 - Search page GET: `GET https://fencingtracker.com/search?s=<encoded name>` (also responds to `?q=`); renders an HTML table with columns Name, Nickname, Club, Division.
 - Name cell is `<td><a href="/p/{usfa_id}/{slug}">Last, First</a></td>`; use the link href to extract the numeric id and slug.
-- API responses set `Access-Control-Allow-Origin: *`, so extension fetches from content scripts work without a background proxy.
+- **Note:** All API requests are now handled by the background service worker to avoid CORS issues (refactored 2025-10-09).
 
 ## Query Normalization
 - Queries are case-insensitive and ignore extra spaces.
