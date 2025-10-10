@@ -35,13 +35,27 @@ You can view your list of starred fencers at any time by clicking the extension 
 
 You can load this extension into any Chromium-based browser (like Chrome, Edge, or Brave).
 
-#### Chromium (Chrome, Edge)
+### Option 1: Install from Release Zip (Recommended)
 
-1.  Download or clone this repository to your computer.
+1.  Download the latest `fencer-strength-extension.zip` from the releases page.
+2.  Extract the zip file to a permanent location on your computer.
+    *   **Important:** Do not delete this folder after installation - Chrome needs it to run the extension.
+3.  Open your browser and navigate to `chrome://extensions`.
+4.  Enable **Developer mode** using the toggle in the top-right corner.
+5.  Click **Load unpacked** and select the extracted folder.
+6.  The Fencer Strength Lookup icon will appear in your browser toolbar.
+
+You can verify the zip file's integrity using the included `.sha256` checksum file.
+
+### Option 2: Install from Source (For Developers)
+
+1.  Clone this repository to your computer.
 2.  Open your browser and navigate to `chrome://extensions`.
 3.  Enable **Developer mode** using the toggle in the top-right corner.
-4.  Click **Load unpacked** and select the folder where you saved the extension.
+4.  Click **Load unpacked** and select the repository folder.
 5.  The Fencer Strength Lookup icon will appear in your browser toolbar.
+
+If you make changes to the code and want to distribute it, run `./scripts/package-extension.sh` to create a new release zip. This ensures all required files (including the `src/` helper modules needed by the service worker) are included in the archive.
 
 ## Privacy
 

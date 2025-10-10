@@ -12,15 +12,42 @@
 // and API functions (search, profile, strength, history).
 // ============================================================================
 
-importScripts(
-  'src/config/base-url.js',
-  'src/cache/cache.js',
-  'src/utils/normalize.js',
-  'src/api/search.js',
-  'src/api/profile.js',
-  'src/api/strength.js',
-  'src/api/history.js'
-);
+try {
+  importScripts(
+    'src/config/base-url.js',
+    'src/cache/cache.js',
+    'src/utils/normalize.js',
+    'src/api/search.js',
+    'src/api/profile.js',
+    'src/api/strength.js',
+    'src/api/history.js'
+  );
+} catch (error) {
+  console.error(
+    '========================================\n' +
+    'Fencer Strength: CRITICAL ERROR\n' +
+    '========================================\n' +
+    'Failed to load required helper modules from src/ directory.\n' +
+    'This usually means the extension was packaged incorrectly.\n\n' +
+    'Missing files may include:\n' +
+    '  - src/config/base-url.js\n' +
+    '  - src/cache/cache.js\n' +
+    '  - src/utils/normalize.js\n' +
+    '  - src/api/search.js\n' +
+    '  - src/api/profile.js\n' +
+    '  - src/api/strength.js\n' +
+    '  - src/api/history.js\n\n' +
+    'If you are developing the extension:\n' +
+    '  Run ./scripts/package-extension.sh to create a proper distribution.\n\n' +
+    'If you installed from a zip:\n' +
+    '  The archive may be incomplete. Please contact the distributor.\n' +
+    '========================================\n' +
+    'Original error: ' + (error.message || String(error)) + '\n' +
+    '========================================'
+  );
+  // Re-throw to prevent the service worker from registering
+  throw error;
+}
 
 // ============================================================================
 // Namespaced API Surface
