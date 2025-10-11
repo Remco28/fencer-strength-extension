@@ -22,3 +22,6 @@ build/
 .idea/
 *.swp
 *.swo
+
+# embarassing ai stuff
+.gemini/
