@@ -32,54 +32,245 @@
         color-scheme: light;
       }
 
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         margin: 0;
         padding: 16px;
-        min-width: 220px;
+        min-width: 300px;
+        max-width: 340px;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         background: #f8fafc;
         color: #111827;
       }
 
       h1 {
-        margin: 0 0 12px;
+        margin: 0 0 14px;
         font-size: 16px;
         font-weight: 600;
       }
 
-      button {
+      h2 {
+        margin: 0 0 8px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #6b7280;
+      }
+
+      section {
+        margin-bottom: 16px;
+      }
+
+      .section-note {
+        margin: 0 0 10px;
+        font-size: 12px;
+        color: #6b7280;
+        line-height: 1.4;
+      }
+
+      .kids-list {
+        list-style: none;
+        margin: 0 0 10px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .kid-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+      }
+
+      .kid-name {
+        font-size: 14px;
+        font-weight: 600;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .kid-remove {
+        border: none;
+        background: transparent;
+        color: #dc2626;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 2px 4px;
+        flex-shrink: 0;
+      }
+
+      .kid-remove:hover {
+        color: #b91c1c;
+      }
+
+      .kids-empty {
+        margin: 0 0 10px;
+        font-size: 13px;
+        color: #6b7280;
+      }
+
+      .add-row {
+        display: flex;
+        gap: 6px;
+      }
+
+      .add-row input {
+        flex: 1;
+        min-width: 0;
+        padding: 8px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: inherit;
+      }
+
+      .add-row input:focus {
+        outline: 2px solid #93c5fd;
+        outline-offset: 1px;
+        border-color: #60a5fa;
+      }
+
+      button.primary,
+      button.secondary {
         width: 100%;
         padding: 10px 14px;
         border: none;
         border-radius: 8px;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        color: #fff;
-        background: linear-gradient(140deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
-        transition: filter 0.2s ease;
+        font-family: inherit;
       }
 
-      button:hover {
+      button.primary {
+        color: #fff;
+        background: linear-gradient(140deg, #2563eb 0%, #3b82f6 55%, #60a5fa 100%);
+      }
+
+      button.primary:hover:not(:disabled) {
         filter: brightness(1.05);
+      }
+
+      button.secondary {
+        color: #1f2937;
+        background: #e5e7eb;
+      }
+
+      button.secondary:hover:not(:disabled) {
+        background: #d1d5db;
       }
 
       button:disabled {
         cursor: not-allowed;
-        filter: grayscale(0.4);
-        opacity: 0.7;
+        opacity: 0.65;
+      }
+
+      button.small {
+        width: auto;
+        padding: 8px 12px;
+        flex-shrink: 0;
+      }
+
+      .search-results {
+        list-style: none;
+        margin: 8px 0 0;
+        padding: 0;
+        max-height: 160px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .search-results.hidden {
+        display: none;
+      }
+
+      .search-result {
+        width: 100%;
+        text-align: left;
+        border: none;
+        border-bottom: 1px solid #f3f4f6;
+        background: transparent;
+        padding: 8px 10px;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .search-result:last-child {
+        border-bottom: none;
+      }
+
+      .search-result:hover {
+        background: #f8fafc;
+      }
+
+      .search-result-name {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+      }
+
+      .search-result-club {
+        display: block;
+        font-size: 11px;
+        color: #6b7280;
+        margin-top: 2px;
       }
 
       .popup-status {
-        margin-top: 12px;
-        font-size: 13px;
+        margin-top: 10px;
+        font-size: 12px;
         color: #4b5563;
+        min-height: 1.2em;
+      }
+
+      .popup-status.error {
+        color: #b91c1c;
       }
     </style>
   </head>
   <body>
     <h1>Fencer Strength</h1>
-    <button id="view-tracked">View Tracked Fencers</button>
+
+    <section aria-labelledby="kids-heading">
+      <h2 id="kids-heading">My kids</h2>
+      <p class="section-note">Up to 2. Used for matchup estimates when you look up an opponent.</p>
+      <ul class="kids-list" id="kids-list"></ul>
+      <p class="kids-empty hidden" id="kids-empty">No kids added yet.</p>
+
+      <div class="add-row" id="add-row">
+        <input
+          type="search"
+          id="kid-search"
+          placeholder="Search name to add…"
+          autocomplete="off"
+          aria-label="Search for a kid to add"
+        >
+        <button type="button" class="primary small" id="kid-search-btn">Search</button>
+      </div>
+      <ul class="search-results hidden" id="search-results" role="listbox" aria-label="Search results"></ul>
+    </section>
+
+    <section aria-labelledby="favorites-heading">
+      <h2 id="favorites-heading">Favorites</h2>
+      <button type="button" class="secondary" id="view-favorites">View favorites</button>
+    </section>
+
     <div class="popup-status" id="popup-status" role="status" aria-live="polite"></div>
     <script src="popup.js"></script>
   </body>

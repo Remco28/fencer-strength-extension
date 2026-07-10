@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Fencer Strength Lookup",
-  "version": "0.2.0",
-  "description": "Look up fencer strength ratings from FencingTracker.com via context menu",
+  "version": "0.3.0",
+  "description": "Look up fencer strength ratings and kid matchups from FencingTracker.com via context menu",
   "permissions": [
     "contextMenus",
     "activeTab",

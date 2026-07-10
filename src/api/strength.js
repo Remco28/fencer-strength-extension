@@ -110,42 +110,54 @@ function parseStrengthHtml(html) {
 
   const weapons = {};
 
-  // Parse summary table
-  const rows = doc.querySelectorAll('table.table-striped tbody tr');
+  // Prefer the dedicated summary table so matchup/teaser tables are ignored.
+  let rows = doc.querySelectorAll('table.person-strength__summary-table tbody tr');
+  if (!rows.length) {
+    rows = doc.querySelectorAll('table.table-striped tbody tr');
+  }
 
   for (const row of rows) {
     const cells = row.querySelectorAll('td');
     if (cells.length < 4) continue;
 
-    // Column 0: Weapon name
     const weaponText = cells[0].textContent.trim();
     const weapon = normalizeWeapon(weaponText);
 
-    // Column 1: Type (DE or Pool)
     const typeText = cells[1].textContent.trim().toLowerCase();
-    const type = typeText.includes('pool') ? 'pool' : 'de';
+    const isPool = typeText === 'pool' || typeText === 'pools';
+    const isDe =
+      typeText === 'de' ||
+      typeText === 'direct elimination' ||
+      typeText === 'direct eliminations';
+    if (!isPool && !isDe) continue;
+    const type = isPool ? 'pool' : 'de';
 
-    // Column 2: Strength value
     const strengthText = cells[2].textContent.trim();
+    if (!strengthText || strengthText === '-') continue;
     const strengthValue = parseStrengthValue(strengthText);
 
-    // Column 3: Range (optional)
     const rangeText = cells[3].textContent.trim();
     const range = parseStrengthRange(rangeText);
 
-    // Initialize weapon object if needed
+    if (cells.length >= 6) {
+      const minVal = parseInt(cells[4].textContent.trim(), 10);
+      const maxVal = parseInt(cells[5].textContent.trim(), 10);
+      if (!isNaN(minVal) && !isNaN(maxVal)) {
+        range.min = minVal;
+        range.max = maxVal;
+      }
+    }
+
     if (!weapons[weapon]) {
       weapons[weapon] = {};
     }
 
-    // Store the data
     weapons[weapon][type] = {
       value: strengthValue,
       ...range
     };
   }
 
-  // Optionally parse series data from inline script
   const series = parseSeriesData(html);
 
   return {

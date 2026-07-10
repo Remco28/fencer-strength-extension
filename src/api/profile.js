@@ -127,31 +127,41 @@ function parseProfileHtml(html, id, slug) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
 
-  // Name from card header
-  const nameElement = doc.querySelector('div.card-header h1.fw-bold');
+  // Prefer redesigned person-hero layout; fall back to legacy card-header selectors.
+  const nameElement =
+    doc.querySelector('.person-hero__identity h1') ||
+    doc.querySelector('.person-hero h1') ||
+    doc.querySelector('div.card-header h1.fw-bold') ||
+    doc.querySelector('h1');
   const name = nameElement ? nameElement.textContent.trim() : parseSlug(slug);
 
-  // Birth year from sibling h3
   let birthYear = null;
-  const birthYearElement = doc.querySelector('div.card-header h3.text-dark-emphasis');
+  const birthYearElement =
+    doc.querySelector('.person-hero__birth-year') ||
+    doc.querySelector('div.card-header h3.text-dark-emphasis');
   if (birthYearElement) {
     const yearText = birthYearElement.textContent.trim();
-    const yearMatch = yearText.match(/\d{4}/);
+    const yearMatch = yearText.match(/\b(19|20)\d{2}\b/);
     if (yearMatch) {
       birthYear = parseInt(yearMatch[0], 10);
     }
   }
 
-  // Club from link
   let club = null;
-  const clubElement = doc.querySelector('div.card-header a[href^="/club/"]');
+  const clubElement =
+    doc.querySelector('a.person-hero__club-link') ||
+    doc.querySelector('.person-hero a[href^="/club/"]') ||
+    doc.querySelector('div.card-header a[href^="/club/"]') ||
+    doc.querySelector('a[href^="/club/"]');
   if (clubElement) {
     club = clubElement.textContent.trim();
   }
 
-  // Country from flag icon
-  let country = 'USA'; // Default
-  const flagElement = doc.querySelector('.flag-icon');
+  let country = 'USA';
+  const flagElement =
+    doc.querySelector('.person-hero__flag') ||
+    doc.querySelector('.person-hero .flag-icon') ||
+    doc.querySelector('.flag-icon');
   if (flagElement) {
     const title = flagElement.getAttribute('title');
     if (title) {

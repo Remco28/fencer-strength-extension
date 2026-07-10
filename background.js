@@ -315,7 +315,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error('Fencer Strength: tracked list request failed.', error);
         sendResponse({
           success: false,
-          error: 'Unable to open tracked fencers. Reload the page and try again.'
+          error: 'Unable to open favorites. Reload the page and try again.'
         });
       });
 

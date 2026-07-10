@@ -49,7 +49,7 @@ echo "Step 2: Copying runtime assets..."
 # - background.js: Service worker managing context menu and message passing
 # - content.js: Content script for modal injection and API orchestration
 # - modal.css: Styling for the fencer profile modal
-# - popup.html/popup.js: Toolbar popup for tracked fencers list
+# - popup.html/popup.js: Toolbar popup for My kids + favorites
 cp manifest.json "${DIST_DIR}/"
 cp background.js "${DIST_DIR}/"
 cp content.js "${DIST_DIR}/"
@@ -119,14 +119,14 @@ USAGE
 2. Right-click the selected text
 3. Choose "Lookup Fencer on FencingTracker" from the context menu
 4. View the profile modal with strength ratings and bout statistics
-5. Click the extension icon in your toolbar to see your tracked fencers
+5. Click the extension icon to manage My kids and open Favorites
 
 PRIVACY
 -------
 
 This extension only activates when you use it. It communicates exclusively
 with FencingTracker.com to retrieve fencer data. No personal data is collected
-or shared - all tracked fencer information is stored locally on your computer.
+or shared - My kids and favorites are stored only in local browser storage.
 
 For more information, see README.md or visit:
 https://github.com/anthropics/fencer-strength-extension

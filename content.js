@@ -65,31 +65,41 @@ function parseProfileHtml(html, id, slug) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
 
-  // Name from card header
-  const nameElement = doc.querySelector('div.card-header h1.fw-bold');
+  // Prefer redesigned person-hero layout; fall back to legacy card-header selectors.
+  const nameElement =
+    doc.querySelector('.person-hero__identity h1') ||
+    doc.querySelector('.person-hero h1') ||
+    doc.querySelector('div.card-header h1.fw-bold') ||
+    doc.querySelector('h1');
   const name = nameElement ? nameElement.textContent.trim() : parseSlug(slug);
 
-  // Birth year from sibling h3
   let birthYear = null;
-  const birthYearElement = doc.querySelector('div.card-header h3.text-dark-emphasis');
+  const birthYearElement =
+    doc.querySelector('.person-hero__birth-year') ||
+    doc.querySelector('div.card-header h3.text-dark-emphasis');
   if (birthYearElement) {
     const yearText = birthYearElement.textContent.trim();
-    const yearMatch = yearText.match(/\d{4}/);
+    const yearMatch = yearText.match(/\b(19|20)\d{2}\b/);
     if (yearMatch) {
       birthYear = parseInt(yearMatch[0], 10);
     }
   }
 
-  // Club from link
   let club = null;
-  const clubElement = doc.querySelector('div.card-header a[href^="/club/"]');
+  const clubElement =
+    doc.querySelector('a.person-hero__club-link') ||
+    doc.querySelector('.person-hero a[href^="/club/"]') ||
+    doc.querySelector('div.card-header a[href^="/club/"]') ||
+    doc.querySelector('a[href^="/club/"]');
   if (clubElement) {
     club = clubElement.textContent.trim();
   }
 
-  // Country from flag icon
-  let country = 'USA'; // Default
-  const flagElement = doc.querySelector('.flag-icon');
+  let country = 'USA';
+  const flagElement =
+    doc.querySelector('.person-hero__flag') ||
+    doc.querySelector('.person-hero .flag-icon') ||
+    doc.querySelector('.flag-icon');
   if (flagElement) {
     const title = flagElement.getAttribute('title');
     if (title) {
@@ -130,42 +140,60 @@ function parseStrengthHtml(html) {
 
   const weapons = {};
 
-  // Parse summary table
-  const rows = doc.querySelectorAll('table.table-striped tbody tr');
+  // Prefer the dedicated summary table so matchup/teaser tables are ignored.
+  let rows = doc.querySelectorAll('table.person-strength__summary-table tbody tr');
+  if (!rows.length) {
+    rows = doc.querySelectorAll('table.table-striped tbody tr');
+  }
 
   for (const row of rows) {
     const cells = row.querySelectorAll('td');
     if (cells.length < 4) continue;
 
-    // Column 0: Weapon name
     const weaponText = cells[0].textContent.trim();
     const weapon = normalizeWeapon(weaponText);
+    if (!weapon || weapon === 'unknown') continue;
 
-    // Column 1: Type (DE or Pool)
     const typeText = cells[1].textContent.trim().toLowerCase();
-    const type = typeText.includes('pool') ? 'pool' : 'de';
+    // Only accept real strength-summary type labels (skip matchup "I win in pool" rows).
+    const isPool = typeText === 'pool' || typeText === 'pools';
+    const isDe =
+      typeText === 'de' ||
+      typeText === 'direct elimination' ||
+      typeText === 'direct eliminations';
+    if (!isPool && !isDe) continue;
+    const type = isPool ? 'pool' : 'de';
 
-    // Column 2: Strength value
     const strengthText = cells[2].textContent.trim();
+    if (!strengthText || strengthText === '-') continue;
     const strengthValue = parseStrengthValue(strengthText);
+    if (strengthValue === '' || strengthValue === null || strengthValue === undefined) {
+      continue;
+    }
 
-    // Column 3: Range (optional)
     const rangeText = cells[3].textContent.trim();
     const range = parseStrengthRange(rangeText);
 
-    // Initialize weapon object if needed
+    // Prefer explicit Min/Max columns when present (new site layout).
+    if (cells.length >= 6) {
+      const minVal = parseInt(cells[4].textContent.trim(), 10);
+      const maxVal = parseInt(cells[5].textContent.trim(), 10);
+      if (!isNaN(minVal) && !isNaN(maxVal)) {
+        range.min = minVal;
+        range.max = maxVal;
+      }
+    }
+
     if (!weapons[weapon]) {
       weapons[weapon] = {};
     }
 
-    // Store the data
     weapons[weapon][type] = {
       value: strengthValue,
       ...range
     };
   }
 
-  // Optionally parse series data from inline script
   const series = parseSeriesData(html);
 
   return {
@@ -181,8 +209,9 @@ function parseStrengthHtml(html) {
  */
 function normalizeWeapon(weapon) {
   const lower = weapon.toLowerCase().trim();
+  if (!lower) return 'unknown';
   if (lower.includes('foil')) return 'foil';
-  if (lower.includes('epee') || lower.includes('épée')) return 'epee';
+  if (lower.includes('epee') || lower.includes('épée') || lower.includes('pee')) return 'epee';
   if (lower.includes('saber') || lower.includes('sabre')) return 'saber';
   return lower;
 }
@@ -427,7 +456,9 @@ function getAllTimeColumnIndex(table) {
 }
 
 // Storage keys and icons
-const TRACKED_STORAGE_KEY = 'fsTrackedFencers';
+const TRACKED_STORAGE_KEY = 'fsTrackedFencers'; // Favorites (legacy key kept for stored data)
+const MY_KIDS_STORAGE_KEY = 'fsMyKids';
+const MAX_MY_KIDS = 2;
 const STAR_ICON_EMPTY = `
   <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
     <path d="M12 3.25l2.62 5.31 5.86.85-4.24 4.14 1 5.85L12 16.98l-5.24 2.77 1-5.85-4.24-4.14 5.86-.85z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
@@ -445,7 +476,13 @@ let currentResults = [];
 let currentFencer = null;
 let currentLookupId = 0; // Track lookup requests to ignore stale responses
 let currentStrengthData = null;
+let currentHistoryData = null;
 let isCurrentFencerTracked = false;
+let matchupWeaponState = {
+  weapons: [],
+  selected: null,
+  kidComparisons: []
+};
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message) => {
@@ -542,10 +579,10 @@ function createModal() {
         </div>
         <div class="fs-tracked-list fs-hidden">
           <div class="fs-tracked-actions">
-            <h3 class="fs-tracked-title">Tracked Fencers</h3>
-            <button class="fs-tracked-clear" type="button" aria-label="Clear all tracked fencers" disabled>Clear All</button>
+            <h3 class="fs-tracked-title">Favorites</h3>
+            <button class="fs-tracked-clear" type="button" aria-label="Clear all favorites" disabled>Clear All</button>
           </div>
-          <p class="fs-tracked-empty fs-hidden">You haven't tracked any fencers yet.</p>
+          <p class="fs-tracked-empty fs-hidden">You haven't saved any favorites yet.</p>
           <ul class="fs-tracked-items"></ul>
         </div>
         <div class="fs-profile-view fs-hidden">
@@ -553,7 +590,7 @@ function createModal() {
           <div class="fs-profile-info">
             <div class="fs-profile-header">
               <h3 class="fs-profile-name"></h3>
-              <button class="fs-track-toggle" type="button" aria-label="Track fencer" aria-pressed="false"></button>
+              <button class="fs-track-toggle" type="button" aria-label="Add to favorites" aria-pressed="false"></button>
             </div>
             <div class="fs-profile-details">
               <div class="fs-profile-meta"></div>
@@ -561,6 +598,7 @@ function createModal() {
             </div>
           </div>
           <div class="fs-strength-cards"></div>
+          <div class="fs-matchup-section fs-hidden" aria-live="polite"></div>
         </div>
       </div>
     </div>
@@ -622,7 +660,7 @@ function setupModalListeners() {
         return;
       }
 
-      const confirmed = window.confirm('Remove all tracked fencers? This cannot be undone.');
+      const confirmed = window.confirm('Remove all favorites? This cannot be undone.');
       if (!confirmed) {
         return;
       }
@@ -632,10 +670,10 @@ function setupModalListeners() {
       try {
         await clearAllTrackedFencers();
         setModalMode('tracked');
-        setModalTitle('Tracked Fencers');
+        setModalTitle('Favorites');
         await renderTrackedList();
       } catch (error) {
-        console.error('Failed to clear tracked fencers:', error);
+        console.error('Failed to clear favorites:', error);
         clearButton.disabled = false;
       }
     });
@@ -665,10 +703,10 @@ function setupModalListeners() {
       try {
         await removeTrackedFencerById(fencerId);
         setModalMode('tracked');
-        setModalTitle('Tracked Fencers');
+        setModalTitle('Favorites');
         await renderTrackedList();
       } catch (error) {
-        console.error('Failed to remove tracked fencer:', error);
+        console.error('Failed to remove favorite:', error);
         removeButton.disabled = false;
       }
     });
@@ -795,6 +833,7 @@ async function showProfileView(searchResult, lookupId) {
 
     currentFencer = profile;
     currentStrengthData = strength;
+    currentHistoryData = history;
 
     hideAllStates();
     setModalMode('default');
@@ -927,6 +966,7 @@ async function showProfileView(searchResult, lookupId) {
     }
 
     await refreshTrackToggle();
+    await renderMatchupSection(profile, strength, history, lookupId);
 
     // Show back button only if there were multiple results
     const backButton = modalElement.querySelector('.fs-back-button');
@@ -1068,14 +1108,18 @@ function renderTrackToggleState(button, isTracked) {
   button.classList.toggle('fs-track-toggle-active', Boolean(isTracked));
   button.setAttribute('aria-pressed', String(Boolean(isTracked)));
   button.setAttribute(
+    'aria-label',
+    isTracked ? 'Remove from favorites' : 'Add to favorites'
+  );
+  button.setAttribute(
     'title',
-    isTracked ? 'Remove from tracked fencers' : 'Track this fencer'
+    isTracked ? 'Remove from favorites' : 'Add to favorites'
   );
   button.innerHTML = isTracked ? STAR_ICON_FILLED : STAR_ICON_EMPTY;
 }
 
 /**
- * Show tracked fencer list modal view
+ * Show favorites list modal view
  * @returns {Promise<void>}
  */
 async function showTrackedFencerList() {
@@ -1086,7 +1130,7 @@ async function showTrackedFencerList() {
   showModal();
   hideAllStates();
   setModalMode('tracked');
-  setModalTitle('Tracked Fencers');
+  setModalTitle('Favorites');
 
   // Ensure base URL is cached before rendering links
   await fetchAndCacheBaseUrl().catch(err => console.warn('Base URL fetch error:', err));
@@ -1098,8 +1142,8 @@ async function showTrackedFencerList() {
       trackedContainer.classList.remove('fs-hidden');
     }
   } catch (error) {
-    console.error('Unable to display tracked fencers:', error);
-    showErrorState('Unable to load tracked fencers. Please try again.');
+    console.error('Unable to display favorites:', error);
+    showErrorState('Unable to load favorites. Please try again.');
   }
 }
 
@@ -1170,9 +1214,9 @@ async function renderTrackedList() {
     const ariaLabelName = entry.name || 'this fencer';
     removeButton.setAttribute(
       'aria-label',
-      `Remove ${ariaLabelName} from tracked list`
+      `Remove ${ariaLabelName} from favorites`
     );
-    removeButton.setAttribute('title', 'Remove from tracked list');
+    removeButton.setAttribute('title', 'Remove from favorites');
     nameRow.appendChild(removeButton);
 
     textWrapper.appendChild(nameRow);
@@ -1852,4 +1896,434 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ============================================================================
+// My Kids + Matchups
+// ============================================================================
+
+/**
+ * Load saved kids from storage (max 2)
+ * @returns {Promise<Array<{id:string,slug:string,name:string}>>}
+ */
+function getMyKids() {
+  return new Promise(resolve => {
+    chrome.storage.local.get(MY_KIDS_STORAGE_KEY, result => {
+      if (chrome.runtime.lastError) {
+        console.warn('Failed to load my kids:', chrome.runtime.lastError);
+        resolve([]);
+        return;
+      }
+      const raw = result[MY_KIDS_STORAGE_KEY];
+      if (!Array.isArray(raw)) {
+        resolve([]);
+        return;
+      }
+      resolve(
+        raw
+          .filter(entry => entry && entry.id && entry.name)
+          .slice(0, MAX_MY_KIDS)
+          .map(entry => ({
+            id: String(entry.id),
+            slug: entry.slug || '',
+            name: entry.name
+          }))
+      );
+    });
+  });
+}
+
+/**
+ * Elo-style win probability for me vs opponent (higher strength = favorite)
+ * @param {number} myStrength
+ * @param {number} oppStrength
+ * @returns {number} Probability in [0, 1]
+ */
+function eloWinProbability(myStrength, oppStrength) {
+  const mine = Number(myStrength);
+  const theirs = Number(oppStrength);
+  if (!Number.isFinite(mine) || !Number.isFinite(theirs)) {
+    return null;
+  }
+  return 1 / (1 + Math.pow(10, (theirs - mine) / 400));
+}
+
+/**
+ * Soft qualitative label for a win probability
+ * @param {number} probability
+ * @returns {string}
+ */
+function softMatchupLabel(probability) {
+  if (probability == null || !Number.isFinite(probability)) {
+    return '';
+  }
+  if (probability >= 0.7) return 'Clear favorite';
+  if (probability >= 0.58) return 'Slight edge';
+  if (probability >= 0.42) return 'Even matchup';
+  if (probability >= 0.3) return 'Underdog';
+  return 'Clear underdog';
+}
+
+/**
+ * Format win probability as whole percent
+ * @param {number} probability
+ * @returns {string}
+ */
+function formatWinPercent(probability) {
+  if (probability == null || !Number.isFinite(probability)) {
+    return '—';
+  }
+  return `${Math.round(probability * 100)}%`;
+}
+
+/**
+ * Extract numeric strength value from a pool/de entry
+ * @param {Object|null} entry
+ * @returns {number|null}
+ */
+function numericStrengthValue(entry) {
+  if (!entry || entry.value === undefined || entry.value === null || entry.value === '') {
+    return null;
+  }
+  const num = Number(entry.value);
+  return Number.isFinite(num) ? num : null;
+}
+
+/**
+ * List weapons that have pool and/or DE strength
+ * @param {Object} strength
+ * @returns {string[]}
+ */
+function weaponsWithRatings(strength) {
+  const weapons = (strength && strength.weapons) || {};
+  return Object.keys(weapons).filter(weapon => {
+    const data = weapons[weapon] || {};
+    return numericStrengthValue(data.pool) != null || numericStrengthValue(data.de) != null;
+  });
+}
+
+/**
+ * Overlapping weapons between kid and opponent
+ * @param {Object} kidStrength
+ * @param {Object} oppStrength
+ * @returns {string[]}
+ */
+function overlappingWeapons(kidStrength, oppStrength) {
+  const kidWeapons = new Set(weaponsWithRatings(kidStrength));
+  return weaponsWithRatings(oppStrength).filter(w => kidWeapons.has(w));
+}
+
+/**
+ * Choose default weapon from overlap set (prefer opponent's strongest DE)
+ * @param {string[]} weapons
+ * @param {Object} oppStrength
+ * @returns {string|null}
+ */
+function pickDefaultOverlapWeapon(weapons, oppStrength) {
+  if (!weapons || weapons.length === 0) return null;
+  if (weapons.length === 1) return weapons[0];
+
+  let best = weapons[0];
+  let bestScore = -Infinity;
+  for (const weapon of weapons) {
+    const data = (oppStrength.weapons && oppStrength.weapons[weapon]) || {};
+    const de = numericStrengthValue(data.de);
+    const pool = numericStrengthValue(data.pool);
+    const score = de != null ? de : pool != null ? pool : -Infinity;
+    if (score > bestScore) {
+      bestScore = score;
+      best = weapon;
+    }
+  }
+  return best;
+}
+
+/**
+ * Build per-type comparison for one kid vs opponent on one weapon
+ * @param {Object} kidWeaponData
+ * @param {Object} oppWeaponData
+ * @param {'pool'|'de'} type
+ * @returns {Object|null}
+ */
+function buildTypeComparison(kidWeaponData, oppWeaponData, type) {
+  const mine = numericStrengthValue(kidWeaponData && kidWeaponData[type]);
+  const theirs = numericStrengthValue(oppWeaponData && oppWeaponData[type]);
+  if (mine == null || theirs == null) {
+    return null;
+  }
+  const probability = eloWinProbability(mine, theirs);
+  return {
+    type,
+    myStrength: mine,
+    oppStrength: theirs,
+    probability,
+    percentText: formatWinPercent(probability),
+    softLabel: softMatchupLabel(probability)
+  };
+}
+
+/**
+ * Fetch strength (and optional history) for a kid entry
+ * @param {{id:string,slug:string,name:string}} kid
+ * @returns {Promise<{kid:Object,strength:Object,history:Object|null}>}
+ */
+async function loadKidMatchupData(kid) {
+  const slug = kid.slug || buildSlugFromNameSafe(kid.name);
+  let strength = { weapons: {} };
+  let history = null;
+
+  try {
+    const strengthHtmlResult = await callBackgroundApi('getStrength', kid.id, slug);
+    if (strengthHtmlResult && strengthHtmlResult.html) {
+      strength = parseStrengthHtml(strengthHtmlResult.html);
+    }
+  } catch (error) {
+    console.warn(`Failed to load strength for kid ${kid.name}:`, error);
+  }
+
+  try {
+    const historyHtmlResult = await callBackgroundApi('getHistory', kid.id, slug);
+    if (historyHtmlResult && historyHtmlResult.html) {
+      history = parseHistoryHtml(historyHtmlResult.html);
+    }
+  } catch (error) {
+    // Optional for minimal experience line
+    console.warn(`Failed to load history for kid ${kid.name}:`, error);
+  }
+
+  return { kid, strength, history };
+}
+
+/**
+ * Safe slug helper when buildSlugFromName is unavailable in content script
+ * @param {string} name
+ * @returns {string}
+ */
+function buildSlugFromNameSafe(name) {
+  if (!name) return '';
+  const trimmed = String(name).trim();
+  if (!trimmed) return '';
+  if (trimmed.includes(',')) {
+    const parts = trimmed.split(',').map(p => p.trim()).filter(Boolean);
+    if (parts.length === 2) {
+      return `${parts[1]}-${parts[0]}`.replace(/\s+/g, '-');
+    }
+  }
+  // Search API often returns already-hyphenated names (e.g. Lee-Kiefer)
+  if (/^[A-Za-z0-9().\-\s]+$/.test(trimmed) && trimmed.includes('-') && !trimmed.includes(' ')) {
+    return trimmed;
+  }
+  return trimmed.replace(/\s+/g, '-');
+}
+
+/**
+ * Render matchup section for configured kids vs looked-up opponent
+ * @param {Object} profile
+ * @param {Object} strength
+ * @param {Object} history
+ * @param {number} lookupId
+ */
+async function renderMatchupSection(profile, strength, history, lookupId) {
+  const section = modalElement && modalElement.querySelector('.fs-matchup-section');
+  if (!section) {
+    return;
+  }
+
+  section.classList.add('fs-hidden');
+  section.innerHTML = '';
+  matchupWeaponState = { weapons: [], selected: null, kidComparisons: [] };
+
+  const kids = await getMyKids();
+  if (lookupId !== currentLookupId) {
+    return;
+  }
+
+  if (!kids.length) {
+    section.innerHTML = `
+      <div class="fs-matchup-empty">
+        Add your kids in the extension popup to see matchups.
+      </div>
+    `;
+    section.classList.remove('fs-hidden');
+    return;
+  }
+
+  // Skip matchup when looking up one of your own kids
+  const opponentId = profile && profile.id != null ? String(profile.id) : null;
+  const kidsForMatchup = kids.filter(kid => String(kid.id) !== opponentId);
+  if (!kidsForMatchup.length) {
+    section.innerHTML = `
+      <div class="fs-matchup-empty">
+        This is one of your kids — look up an opponent to see matchups.
+      </div>
+    `;
+    section.classList.remove('fs-hidden');
+    return;
+  }
+
+  section.innerHTML = `<div class="fs-matchup-loading">Loading matchups…</div>`;
+  section.classList.remove('fs-hidden');
+
+  const loaded = await Promise.all(kidsForMatchup.map(loadKidMatchupData));
+  if (lookupId !== currentLookupId) {
+    return;
+  }
+
+  // Union of overlapping weapons across all kids (preserve save order of kids)
+  const weaponSet = new Set();
+  loaded.forEach(({ strength: kidStrength }) => {
+    overlappingWeapons(kidStrength, strength).forEach(w => weaponSet.add(w));
+  });
+  const weapons = Array.from(weaponSet);
+  // Stable weapon order: foil, epee, saber, then others
+  const priority = ['foil', 'epee', 'saber'];
+  weapons.sort((a, b) => {
+    const ai = priority.indexOf(a);
+    const bi = priority.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+  if (!weapons.length) {
+    section.innerHTML = `
+      <div class="fs-matchup-header">
+        <h4 class="fs-matchup-title">Matchups</h4>
+      </div>
+      <div class="fs-matchup-empty">No shared weapon ratings with your kids.</div>
+    `;
+    return;
+  }
+
+  const selected = pickDefaultOverlapWeapon(weapons, strength);
+  matchupWeaponState = {
+    weapons,
+    selected,
+    kidComparisons: loaded,
+    opponentStrength: strength,
+    opponentHistory: history
+  };
+
+  paintMatchupSection();
+}
+
+/**
+ * Paint matchup DOM from matchupWeaponState
+ */
+function paintMatchupSection() {
+  const section = modalElement && modalElement.querySelector('.fs-matchup-section');
+  if (!section || !matchupWeaponState.selected) {
+    return;
+  }
+
+  const { weapons, selected, kidComparisons, opponentStrength, opponentHistory } =
+    matchupWeaponState;
+  const oppWeaponData =
+    (opponentStrength && opponentStrength.weapons && opponentStrength.weapons[selected]) || {};
+
+  const chipsHtml =
+    weapons.length > 1
+      ? `<div class="fs-matchup-weapons" role="tablist" aria-label="Matchup weapon">
+          ${weapons
+            .map(
+              weapon => `
+            <button type="button"
+              class="fs-matchup-weapon-chip${weapon === selected ? ' fs-matchup-weapon-chip-active' : ''}"
+              data-weapon="${escapeHtml(weapon)}"
+              role="tab"
+              aria-selected="${weapon === selected}">
+              ${escapeHtml(formatWeaponLabel(weapon))}
+            </button>`
+            )
+            .join('')}
+        </div>`
+      : `<div class="fs-matchup-weapon-label">${escapeHtml(formatWeaponLabel(selected))}</div>`;
+
+  const cardsHtml = kidComparisons
+    .map(({ kid, strength: kidStrength, history: kidHistory }) => {
+      const overlaps = overlappingWeapons(kidStrength, opponentStrength);
+      if (!overlaps.includes(selected)) {
+        return `
+          <div class="fs-matchup-card">
+            <div class="fs-matchup-kid-name">${escapeHtml(kid.name)}</div>
+            <p class="fs-matchup-card-note">No ${escapeHtml(formatWeaponLabel(selected))} rating</p>
+          </div>`;
+      }
+
+      const kidWeaponData = (kidStrength.weapons && kidStrength.weapons[selected]) || {};
+      const pool = buildTypeComparison(kidWeaponData, oppWeaponData, 'pool');
+      const de = buildTypeComparison(kidWeaponData, oppWeaponData, 'de');
+
+      if (!pool && !de) {
+        return `
+          <div class="fs-matchup-card">
+            <div class="fs-matchup-kid-name">${escapeHtml(kid.name)}</div>
+            <p class="fs-matchup-card-note">Incomplete strength data for this weapon</p>
+          </div>`;
+      }
+
+      const rows = [];
+      if (pool) {
+        rows.push(`
+          <div class="fs-matchup-row">
+            <span class="fs-matchup-type">Pools</span>
+            <span class="fs-matchup-pct">${escapeHtml(pool.percentText)}</span>
+            <span class="fs-matchup-soft">${escapeHtml(pool.softLabel)}</span>
+          </div>`);
+      }
+      if (de) {
+        rows.push(`
+          <div class="fs-matchup-row">
+            <span class="fs-matchup-type">DE</span>
+            <span class="fs-matchup-pct">${escapeHtml(de.percentText)}</span>
+            <span class="fs-matchup-soft">${escapeHtml(de.softLabel)}</span>
+          </div>`);
+      }
+
+      const strengthBits = [];
+      if (pool) {
+        strengthBits.push(`Pool ${pool.myStrength} vs ${pool.oppStrength}`);
+      }
+      if (de) {
+        strengthBits.push(`DE ${de.myStrength} vs ${de.oppStrength}`);
+      }
+
+      let experienceLine = '';
+      const kidBouts = kidHistory && kidHistory.bouts > 0 ? kidHistory.bouts : null;
+      const oppBouts =
+        opponentHistory && opponentHistory.bouts > 0 ? opponentHistory.bouts : null;
+      if (kidBouts != null && oppBouts != null) {
+        experienceLine = `<div class="fs-matchup-experience">~${kidBouts} vs ~${oppBouts} career bouts</div>`;
+      }
+
+      return `
+        <div class="fs-matchup-card">
+          <div class="fs-matchup-kid-name">${escapeHtml(kid.name)}</div>
+          <div class="fs-matchup-rows">${rows.join('')}</div>
+          <div class="fs-matchup-strength">${escapeHtml(strengthBits.join(' · '))}</div>
+          ${experienceLine}
+        </div>`;
+    })
+    .join('');
+
+  section.innerHTML = `
+    <div class="fs-matchup-header">
+      <h4 class="fs-matchup-title">Matchups</h4>
+      ${chipsHtml}
+    </div>
+    <div class="fs-matchup-cards">${cardsHtml}</div>
+    <p class="fs-matchup-footnote">Estimated from strength ratings only (FencingTracker-style). Not a guarantee.</p>
+  `;
+
+  section.querySelectorAll('.fs-matchup-weapon-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const weapon = chip.getAttribute('data-weapon');
+      if (!weapon || weapon === matchupWeaponState.selected) {
+        return;
+      }
+      matchupWeaponState.selected = weapon;
+      paintMatchupSection();
+    });
+  });
 }

@@ -2,8 +2,8 @@
 
 **Branch:** `update/fencingtracker-site-refresh`  
 **Date:** 2026-07-10  
-**Status:** Research only — no application code changes yet  
-**Extension version reviewed:** `0.2.0` (Manifest V3)
+**Status:** Research complete; implementation landed on this branch (`0.3.0`)  
+**Extension version reviewed:** `0.2.0` → implemented as `0.3.0` (Manifest V3)
 
 ---
 
