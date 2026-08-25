@@ -1,5 +1,5 @@
 // Profile parser for fencingtracker.com
-// Fetches and parses /p/{id}/{slug} HTML
+// Fetches /p/{id}/{slug} HTML; parsing happens in the content script
 
 const PROFILE_BASE_URL = globalThis.FENCINGTRACKER_BASE_URL || 'https://fencingtracker.com';
 
@@ -96,80 +96,10 @@ async function fetchProfileHtml(id, slug) {
 }
 
 /**
- * DEPRECATED: Fetch and parse profile HTML (kept for backward compatibility if needed)
- * Use fetchProfileHtml and parse in content script instead
- * @param {string} id - Fencer ID
- * @param {string} slug - Name slug
- * @returns {Promise<Object>} Parsed profile data
- */
-async function fetchProfile(id, slug) {
-  const result = await fetchProfileHtml(id, slug);
-  return parseProfileHtml(result.html, result.id, result.slug);
-}
-
-/**
  * Helper to delay execution
  * @param {number} ms - Milliseconds to wait
  * @returns {Promise<void>}
  */
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * Parse profile HTML
- * @param {string} html - HTML content
- * @param {string} id - Fencer ID
- * @param {string} slug - Name slug
- * @returns {Object} Parsed profile data
- */
-function parseProfileHtml(html, id, slug) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-
-  // Name from person hero (post-redesign) or card header (legacy layout)
-  const nameElement = doc.querySelector(
-    '.person-hero h1, div.card-header h1.fw-bold'
-  );
-  const name = nameElement ? nameElement.textContent.trim() : parseSlug(slug);
-
-  // Birth year: dedicated element post-redesign, sibling h3 in legacy layout
-  let birthYear = null;
-  const birthYearElement = doc.querySelector(
-    '.person-hero__birth-year, div.card-header h3.text-dark-emphasis'
-  );
-  if (birthYearElement) {
-    const yearText = birthYearElement.textContent.trim();
-    const yearMatch = yearText.match(/\d{4}/);
-    if (yearMatch) {
-      birthYear = parseInt(yearMatch[0], 10);
-    }
-  }
-
-  // Club from link. Un-scoped since the redesign moved it out of the card
-  // header; new hrefs look like /club/{id}/{Name}/ratings.
-  let club = null;
-  const clubElement = doc.querySelector('a[href^="/club/"]');
-  if (clubElement) {
-    club = clubElement.textContent.trim();
-  }
-
-  // Country from flag icon
-  let country = 'USA'; // Default
-  const flagElement = doc.querySelector('.flag-icon');
-  if (flagElement) {
-    const title = flagElement.getAttribute('title');
-    if (title) {
-      country = title.trim();
-    }
-  }
-
-  return {
-    id,
-    slug,
-    name,
-    birthYear,
-    club,
-    country
-  };
 }
