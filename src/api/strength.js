@@ -110,8 +110,15 @@ function parseStrengthHtml(html) {
 
   const weapons = {};
 
-  // Parse summary table
-  const rows = doc.querySelectorAll('table.table-striped tbody tr');
+  // Scope parsing to the strength summary table (mirrors content.js). The page
+  // also contains a "Matchup against me" table that shares the table-striped
+  // class; matching it would overwrite real DE/Pool strengths with empty rows.
+  const summaryTable =
+    doc.querySelector('table.person-strength__summary-table') ||
+    doc.querySelector('table.table-striped');
+  const rows = summaryTable
+    ? summaryTable.querySelectorAll('tbody tr')
+    : [];
 
   for (const row of rows) {
     const cells = row.querySelectorAll('td');
@@ -121,8 +128,14 @@ function parseStrengthHtml(html) {
     const weaponText = cells[0].textContent.trim();
     const weapon = normalizeWeapon(weaponText);
 
-    // Column 1: Type (DE or Pool)
+    // Column 1: Type (Pool or Direct elimination)
     const typeText = cells[1].textContent.trim().toLowerCase();
+
+    // Skip non-summary rows (e.g. matchup outcome rows "I win in pool").
+    if (!/^(pool|direct elimination|de)$/.test(typeText)) {
+      continue;
+    }
+
     const type = typeText.includes('pool') ? 'pool' : 'de';
 
     // Column 2: Strength value
