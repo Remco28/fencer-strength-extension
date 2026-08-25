@@ -14,10 +14,10 @@
 - API `name` field uses hyphenated slugs (`"Lee-Kiefer"`), so replace hyphens with spaces for display.
 
 ## Profile Page Selectors (`/p/{id}/{slug}`)
-- Top card header:
-  - Display name: `div.card-header h1.fw-bold`.
-  - Birth year (when available): sibling `h3.text-dark-emphasis`; may be empty for many fencers.
-  - Primary club link: first `div.card-header a[href^="/club/"]` within the header block.
+- Post-redesign layout (current):
+  - Display name: `.person-hero h1` (primary selector) or `div.card-header h1.fw-bold` (legacy fallback).
+  - Birth year: `.person-hero__birth-year` (post-redesign) or `div.card-header h3.text-dark-emphasis` (legacy fallback); may be empty for many fencers.
+  - Primary club link: `a[href^="/club/"]` (moved out of card header in redesign; new hrefs: `/club/{id}/{Name}/ratings`).
   - Country flag: `<span class="flag-icon ...">` next to the name.
 - Tabs: Summary | History | Strength; URLs follow `/p/{id}/{slug}/{tab}`.
 
@@ -27,11 +27,16 @@
 - Total bouts = (`Victories` + `Losses`) using the "All Time" column. Ensure parser treats `-` as zero before summing.
 
 ## Strength Data (`/p/{id}/{slug}/strength`)
-- Summary table: each row is a `(weapon, type)` pair where `type` ∈ {`DE`, `Pool`}. Strength and confidence range live in columns 3–4.
-- Weapons appear as "Foil", "Epee" (UI label uses the accented form), and "Saber". Multi-weapon support: the table lists one row per (weapon, type); expect additional entries when the fencer has ratings in multiple weapons.
-- Nav pills above the chart map to weapons: `#weapon_pill_f`, `#weapon_pill_e`, `#weapon_pill_s`. Pills have `disabled` when that weapon lacks data.
-- Inline script exposes `const series = { "F": { P: [...], D: [...] }, "E": {...}, "S": {...} }` and `const stabilityPos = {...}`. Non-empty arrays indicate available data for that weapon.
-- Chart is populated by the `switchWeapon('<letter>')` function; `switchWeapon` is invoked at the bottom with the starting weapon for the profile (e.g., `'f'` for foil specialists).
+- Post-redesign layout (current):
+  - Summary table: `table.person-strength__summary-table` (primary) or `table.table-striped` (legacy fallback). Each row is a `(weapon, type)` pair where `type` ∈ {`DE`, `Pool`}.
+  - Table structure: columns are Weapon | Type | Strength | Estimate Range | Min | Max
+  - Weapons appear as "Foil", "Epee" (UI label uses the accented form), and "Saber". Multi-weapon support: the table lists one row per (weapon, type).
+  - **Critical parsing note**: The redesign added a "Matchup against me" table that also uses the `table-striped` class. The old selector `table.table-striped tbody tr` would match both tables, causing matchup rows (which have empty strength values) to overwrite real strength data. Always prefer `table.person-strength__summary-table tbody tr` to target only the strength summary.
+  - Type column validation: Only process rows where column 1 matches `/^(pool|direct elimination|de)$/i` to skip non-strength rows.
+- Chart and navigation:
+  - Nav pills above the chart map to weapons: `#weapon_pill_f`, `#weapon_pill_e`, `#weapon_pill_s`. Pills have `disabled` when that weapon lacks data.
+  - Inline script exposes `const series = { "F": { P: [...], D: [...] }, "E": {...}, "S": {...} }` and `const stabilityPos = {...}`. Non-empty arrays indicate available data for that weapon.
+  - Chart is populated by the `switchWeapon('<letter>')` function; `switchWeapon` is invoked at the bottom with the starting weapon for the profile (e.g., `'f'` for foil specialists).
 - Use the summary table for quick DE/Pool values, and optionally the `series` data for sparkline history or to detect multi-weapon coverage.
 
 ## Implementation Notes
@@ -39,3 +44,9 @@
 - When caching search results, store both the display name and slug to avoid recomputing.
 - Respect polite scraping guidelines: single GET per tab interaction with 500–1000 ms pacing between sequential requests (search → profile → strength → history if needed).
 - Expect occasional 404s when a slug is outdated; recover by retrying with the `name` returned from the search API.
+
+## Parser Data Format Changes (Post-redesign)
+- **Strength data structure**: The current parser returns `{ weapon: { pool: number, de: number, pool_range?: {min, max}, de_range?: {min, max} } }` 
+- **Legacy format**: Pre-redesign mock data used `{ weapons: { weapon: { domesticStrength: "B2", pool: number } } }`
+- **Current ratings**: Numeric strength values are typically in the 2000-5000+ range for active fencers
+- **Range data**: When available, confidence intervals are provided as `{min: number, max: number}` objects

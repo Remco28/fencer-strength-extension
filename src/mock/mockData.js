@@ -144,60 +144,64 @@ async function fetchStrengthMock(id) {
 
   const strengths = {
     '12345': {
-      weapons: {
-        epee: {
-          domesticStrength: 'B2',
-          pool: 65
-        }
+      epee: {
+        pool: 3850,
+        pool_range: { min: 3720, max: 3980 },
+        de: 4120,
+        de_range: { min: 3965, max: 4275 }
       }
     },
     '12346': {
-      weapons: {
-        foil: {
-          domesticStrength: 'C1',
-          pool: 45
-        }
+      foil: {
+        pool: 2890,
+        pool_range: { min: 2750, max: 3030 },
+        de: 3150,
+        de_range: { min: 2985, max: 3315 }
       }
     },
     '12347': {
-      weapons: {
-        saber: {
-          domesticStrength: 'A3',
-          pool: 85
-        }
+      saber: {
+        pool: 4450,
+        pool_range: { min: 4280, max: 4620 },
+        de: 4680,
+        de_range: { min: 4505, max: 4855 }
       }
     },
     '54321': {
-      weapons: {
-        epee: {
-          domesticStrength: 'B1',
-          pool: 72
-        }
+      epee: {
+        pool: 3980,
+        pool_range: { min: 3840, max: 4120 },
+        de: 4250,
+        de_range: { min: 4075, max: 4425 }
       }
     },
     '99999': {
-      // Multi-weapon fencer
-      weapons: {
-        epee: {
-          domesticStrength: 'A2',
-          pool: 88
-        },
-        foil: {
-          domesticStrength: 'B3',
-          pool: 62
-        },
-        saber: {
-          domesticStrength: 'C2',
-          pool: 52
-        }
+      // Multi-weapon fencer with realistic ratings
+      epee: {
+        pool: 4200,
+        pool_range: { min: 4050, max: 4350 },
+        de: 4480,
+        de_range: { min: 4315, max: 4645 }
+      },
+      foil: {
+        pool: 3650,
+        pool_range: { min: 3510, max: 3790 },
+        de: 3920,
+        de_range: { min: 3765, max: 4075 }
+      },
+      saber: {
+        pool: 3450,
+        pool_range: { min: 3310, max: 3590 },
+        de: 3720,
+        de_range: { min: 3565, max: 3875 }
       }
     },
     '00000': {
-      weapons: {
-        epee: {
-          domesticStrength: 'U',
-          pool: 0
-        }
+      epee: {
+        pool: 2200,
+        pool_range: { min: 2050, max: 2350 },
+        de: 2380,
+        de_range: { min: 2210, max: 2550 }
       }
     }
   };
