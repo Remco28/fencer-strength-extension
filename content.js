@@ -65,13 +65,17 @@ function parseProfileHtml(html, id, slug) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
 
-  // Name from card header
-  const nameElement = doc.querySelector('div.card-header h1.fw-bold');
+  // Name from person hero (post-redesign) or card header (legacy layout)
+  const nameElement = doc.querySelector(
+    '.person-hero h1, div.card-header h1.fw-bold'
+  );
   const name = nameElement ? nameElement.textContent.trim() : parseSlug(slug);
 
-  // Birth year from sibling h3
+  // Birth year: dedicated element post-redesign, sibling h3 in legacy layout
   let birthYear = null;
-  const birthYearElement = doc.querySelector('div.card-header h3.text-dark-emphasis');
+  const birthYearElement = doc.querySelector(
+    '.person-hero__birth-year, div.card-header h3.text-dark-emphasis'
+  );
   if (birthYearElement) {
     const yearText = birthYearElement.textContent.trim();
     const yearMatch = yearText.match(/\d{4}/);
@@ -80,9 +84,10 @@ function parseProfileHtml(html, id, slug) {
     }
   }
 
-  // Club from link
+  // Club from link. Un-scoped since the redesign moved it out of the card
+  // header; new hrefs look like /club/{id}/{Name}/ratings.
   let club = null;
-  const clubElement = doc.querySelector('div.card-header a[href^="/club/"]');
+  const clubElement = doc.querySelector('a[href^="/club/"]');
   if (clubElement) {
     club = clubElement.textContent.trim();
   }
@@ -130,8 +135,17 @@ function parseStrengthHtml(html) {
 
   const weapons = {};
 
-  // Parse summary table
-  const rows = doc.querySelectorAll('table.table-striped tbody tr');
+  // Scope parsing to the strength summary table. The page also contains a
+  // "Matchup against me" table (person-strength__matchup-table) that used to
+  // share the table-striped class; matching it would overwrite real DE/Pool
+  // strengths with empty matchup rows.
+  // Fallback keeps compatibility with the pre-redesign layout.
+  const summaryTable =
+    doc.querySelector('table.person-strength__summary-table') ||
+    doc.querySelector('table.table-striped');
+  const rows = summaryTable
+    ? summaryTable.querySelectorAll('tbody tr')
+    : [];
 
   for (const row of rows) {
     const cells = row.querySelectorAll('td');
@@ -141,8 +155,15 @@ function parseStrengthHtml(html) {
     const weaponText = cells[0].textContent.trim();
     const weapon = normalizeWeapon(weaponText);
 
-    // Column 1: Type (DE or Pool)
+    // Column 1: Type (Pool or Direct elimination)
     const typeText = cells[1].textContent.trim().toLowerCase();
+
+    // Skip any row that is not a summary (weapon, type) pair, e.g. the
+    // "Matchup against me" outcome rows ("I win in pool", ...).
+    if (!/^(pool|direct elimination|de)$/.test(typeText)) {
+      continue;
+    }
+
     const type = typeText.includes('pool') ? 'pool' : 'de';
 
     // Column 2: Strength value

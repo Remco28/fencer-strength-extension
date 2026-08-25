@@ -127,13 +127,17 @@ function parseProfileHtml(html, id, slug) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
 
-  // Name from card header
-  const nameElement = doc.querySelector('div.card-header h1.fw-bold');
+  // Name from person hero (post-redesign) or card header (legacy layout)
+  const nameElement = doc.querySelector(
+    '.person-hero h1, div.card-header h1.fw-bold'
+  );
   const name = nameElement ? nameElement.textContent.trim() : parseSlug(slug);
 
-  // Birth year from sibling h3
+  // Birth year: dedicated element post-redesign, sibling h3 in legacy layout
   let birthYear = null;
-  const birthYearElement = doc.querySelector('div.card-header h3.text-dark-emphasis');
+  const birthYearElement = doc.querySelector(
+    '.person-hero__birth-year, div.card-header h3.text-dark-emphasis'
+  );
   if (birthYearElement) {
     const yearText = birthYearElement.textContent.trim();
     const yearMatch = yearText.match(/\d{4}/);
@@ -142,9 +146,10 @@ function parseProfileHtml(html, id, slug) {
     }
   }
 
-  // Club from link
+  // Club from link. Un-scoped since the redesign moved it out of the card
+  // header; new hrefs look like /club/{id}/{Name}/ratings.
   let club = null;
-  const clubElement = doc.querySelector('div.card-header a[href^="/club/"]');
+  const clubElement = doc.querySelector('a[href^="/club/"]');
   if (clubElement) {
     club = clubElement.textContent.trim();
   }
