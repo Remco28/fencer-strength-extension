@@ -327,8 +327,11 @@ function renderSearchResults(results) {
     button.className = 'search-result';
     button.setAttribute('role', 'option');
 
-    const name = displayNameFromSearch(result.name || result.slug || 'Unknown');
-    const club = result.club || 'Unknown club';
+    const name = result.displayName || displayNameFromSearch(result.name || result.slug || 'Unknown');
+    const club = [result.club || 'Unknown club', result.division].filter(Boolean).join(' • ') +
+      (result.possibleDuplicate
+        ? ` • possible duplicate${typeof result.bouts === 'number' ? `, ${result.bouts} bouts` : ''}`
+        : '');
 
     const nameEl = document.createElement('span');
     nameEl.className = 'search-result-name';
@@ -371,7 +374,7 @@ async function addKidFromResult(result) {
   const entry = {
     id,
     slug: result.slug || deriveSlug(result.name || ''),
-    name: displayNameFromSearch(result.name || result.slug || 'Unknown')
+    name: result.displayName || displayNameFromSearch(result.name || result.slug || 'Unknown')
   };
 
   try {

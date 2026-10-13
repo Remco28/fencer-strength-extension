@@ -832,3 +832,14 @@ a.fs-tracked-name:hover {
     padding: 14px 16px;
   }
 }
+
+.fs-result-nickname {
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.fs-result-duplicate {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #b45309;
+}

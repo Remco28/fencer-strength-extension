@@ -6,6 +6,10 @@
 
 const FENCING_API_KEY_STORAGE_KEY = 'fsApiKey';
 const FENCING_API_TIMEOUT_MS = 15000;
+// A search that has to check duplicates can outlast the API's 12s answer window;
+// it then hands back a job to poll instead of data.
+const FENCING_API_JOB_WAIT_MS = 30000;
+const FENCING_API_POLL_MS = 1500;
 
 /**
  * Read the saved API key
@@ -53,11 +57,14 @@ async function fencingApiGet(path, params) {
       return null;
     }
     const body = await response.json();
-    // 202 with nothing stored yet: the scrape is still running; don't wait for it.
-    if (!body || !body.fetched_at) {
-      return null;
+    if (body && body.fetched_at) {
+      return body;
     }
-    return body;
+    // 202 with nothing stored yet: the scrape is still running; wait for it.
+    if (body && body.job_id) {
+      return await waitForFencingApiJob(base, key, body.job_id);
+    }
+    return null;
   } catch (error) {
     console.warn(`fencing-api ${path} unreachable, falling back to FencingTracker`, error);
     return null;
@@ -67,7 +74,32 @@ async function fencingApiGet(path, params) {
 }
 
 /**
- * Search through fencing-api. Same shape as searchFencers().
+ * Poll /v1/jobs/{id} until the scrape finishes; its result is the stored data.
+ * @returns {Promise<Object|null>}
+ */
+async function waitForFencingApiJob(base, key, jobId) {
+  const giveUpAt = Date.now() + FENCING_API_JOB_WAIT_MS;
+  while (Date.now() < giveUpAt) {
+    await new Promise(resolve => setTimeout(resolve, FENCING_API_POLL_MS));
+    const response = await fetch(new URL(`/v1/jobs/${jobId}`, base).toString(), {
+      headers: { 'X-API-Key': key, Accept: 'application/json' }
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const job = await response.json();
+    if (job.status === 'done' || job.status === 'failed') {
+      return job.result && job.result.fetched_at ? job.result : null;
+    }
+  }
+  console.warn('fencing-api job still running after 30s, falling back to FencingTracker');
+  return null;
+}
+
+/**
+ * Search through fencing-api. Same shape as searchFencers(), plus division,
+ * nickname, and for same-name/club/division duplicates: bouts, birthYear and
+ * possibleDuplicate (empty or dead duplicates are already removed).
  * @param {string} query
  * @returns {Promise<Array|null>}
  */
@@ -78,11 +110,16 @@ async function apiSearchFencers(query) {
   }
   return body.items.map(item => ({
     id: item.tracker_id,
-    // FencingTracker's search names are slugs ("Lee-Kiefer"); keep showing them as before.
-    name: item.slug || item.name,
+    name: item.name,
+    displayName: item.name,
     slug: item.slug,
     club: item.club || 'Unknown Club',
+    division: item.division || null,
+    nickname: item.nickname || null,
     country: 'USA',
+    bouts: typeof item.bouts === 'number' ? item.bouts : null,
+    birthYear: item.birth_year || null,
+    possibleDuplicate: Boolean(item.possible_duplicate),
     via: 'fencing-api'
   }));
 }

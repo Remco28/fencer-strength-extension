@@ -552,6 +552,32 @@ async function handleLookup(query) {
 }
 
 /**
+ * "Club • Division" for a search result (country when division is unknown)
+ * @param {Object} result
+ * @returns {string}
+ */
+function searchResultDetails(result) {
+  return [result.club, result.division || result.country].filter(Boolean).join(' • ');
+}
+
+/**
+ * What tells two same-looking search results apart
+ * @param {Object} result
+ * @returns {string}
+ */
+function duplicateDetails(result) {
+  const parts = [];
+  if (typeof result.bouts === 'number') {
+    parts.push(`${result.bouts} bouts`);
+  }
+  if (result.birthYear) {
+    parts.push(`born ${result.birthYear}`);
+  }
+  parts.push(`ID ${result.id}`);
+  return parts.join(' • ');
+}
+
+/**
  * Create the modal DOM structure
  */
 function createModal() {
@@ -777,8 +803,15 @@ function showResultsList(results) {
     const li = document.createElement('li');
     li.className = 'fs-result-item';
     li.innerHTML = `
-      <div class="fs-result-name">${escapeHtml(result.name)}</div>
-      <div class="fs-result-info">${escapeHtml(result.club)} • ${escapeHtml(result.country)}</div>
+      <div class="fs-result-name">${escapeHtml(result.displayName || result.name)}${
+        result.nickname ? ` <span class="fs-result-nickname">“${escapeHtml(result.nickname)}”</span>` : ''
+      }</div>
+      <div class="fs-result-info">${escapeHtml(searchResultDetails(result))}</div>
+      ${
+        result.possibleDuplicate
+          ? `<div class="fs-result-duplicate">Possible duplicate: ${escapeHtml(duplicateDetails(result))}</div>`
+          : ''
+      }
     `;
     li.addEventListener('click', () => showProfileView(result, currentLookupId));
     resultsList.appendChild(li);
