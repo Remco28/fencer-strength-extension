@@ -66,6 +66,7 @@ cp popup.js "${DIST_DIR}/"
 # - src/api/profile.js: Profile HTML fetching with slug regeneration
 # - src/api/strength.js: Strength ratings HTML fetching
 # - src/api/history.js: Bout history HTML fetching
+# - src/api/fencing-api.js: fencing-api client (tried first when a key is saved)
 cp -r src/ "${DIST_DIR}/"
 
 # Assets referenced by manifest and web_accessible_resources

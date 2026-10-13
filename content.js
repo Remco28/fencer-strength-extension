@@ -813,17 +813,25 @@ async function showProfileView(searchResult, lookupId) {
     ]);
 
     // Parse the HTML responses locally (DOMParser available in content script)
+    // fencing-api results arrive already parsed; direct FencingTracker results are HTML.
     const profile = profileHtmlResult
-      ? parseProfileHtml(profileHtmlResult.html, profileHtmlResult.id, profileHtmlResult.slug)
+      ? profileHtmlResult.parsed ||
+        parseProfileHtml(profileHtmlResult.html, profileHtmlResult.id, profileHtmlResult.slug)
       : { ...searchResult, birthYear: null };
 
     const strength = strengthHtmlResult
-      ? parseStrengthHtml(strengthHtmlResult.html)
+      ? strengthHtmlResult.parsed || parseStrengthHtml(strengthHtmlResult.html)
       : { weapons: {} };
 
     const history = historyHtmlResult
-      ? parseHistoryHtml(historyHtmlResult.html)
+      ? historyHtmlResult.parsed || parseHistoryHtml(historyHtmlResult.html)
       : { wins: 0, losses: 0, bouts: 0 };
+
+    const dataSource = [profileHtmlResult, strengthHtmlResult, historyHtmlResult].some(
+      result => result && result.via === 'fencing-api'
+    )
+      ? 'via fencing-api'
+      : 'direct from FencingTracker';
 
     // Ignore if a newer lookup started
     if (lookupId !== currentLookupId) {
@@ -890,6 +898,11 @@ async function showProfileView(searchResult, lookupId) {
           value: escapeHtml(boutsValue)
         });
       }
+
+      metaItems.push({
+        label: 'Data',
+        value: escapeHtml(dataSource)
+      });
 
       profileMeta.innerHTML = metaItems.length
         ? metaItems
@@ -2074,7 +2087,9 @@ async function loadKidMatchupData(kid) {
 
   try {
     const strengthHtmlResult = await callBackgroundApi('getStrength', kid.id, slug);
-    if (strengthHtmlResult && strengthHtmlResult.html) {
+    if (strengthHtmlResult && strengthHtmlResult.parsed) {
+      strength = strengthHtmlResult.parsed;
+    } else if (strengthHtmlResult && strengthHtmlResult.html) {
       strength = parseStrengthHtml(strengthHtmlResult.html);
     }
   } catch (error) {
@@ -2083,7 +2098,9 @@ async function loadKidMatchupData(kid) {
 
   try {
     const historyHtmlResult = await callBackgroundApi('getHistory', kid.id, slug);
-    if (historyHtmlResult && historyHtmlResult.html) {
+    if (historyHtmlResult && historyHtmlResult.parsed) {
+      history = historyHtmlResult.parsed;
+    } else if (historyHtmlResult && historyHtmlResult.html) {
       history = parseHistoryHtml(historyHtmlResult.html);
     }
   } catch (error) {

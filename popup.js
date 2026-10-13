@@ -2,6 +2,7 @@
 
 const MY_KIDS_STORAGE_KEY = 'fsMyKids';
 const MAX_MY_KIDS = 2;
+const API_KEY_STORAGE_KEY = 'fsApiKey';
 
 const kidsListEl = document.getElementById('kids-list');
 const kidsEmptyEl = document.getElementById('kids-empty');
@@ -11,6 +12,9 @@ const kidSearchBtn = document.getElementById('kid-search-btn');
 const searchResultsEl = document.getElementById('search-results');
 const viewFavoritesButton = document.getElementById('view-favorites');
 const statusElement = document.getElementById('popup-status');
+const apiKeyInput = document.getElementById('api-key');
+const apiKeySaveBtn = document.getElementById('api-key-save');
+const apiKeyNote = document.getElementById('api-key-note');
 
 let kidsCache = [];
 
@@ -37,6 +41,52 @@ async function initPopup() {
 
   if (viewFavoritesButton) {
     viewFavoritesButton.addEventListener('click', openFavorites);
+  }
+
+  if (apiKeySaveBtn) {
+    apiKeySaveBtn.addEventListener('click', saveApiKey);
+    await showApiKeyState();
+  }
+}
+
+/**
+ * Show whether a fencing-api key is saved (never the key itself)
+ */
+async function showApiKeyState() {
+  const result = await chrome.storage.local.get(API_KEY_STORAGE_KEY);
+  const saved = Boolean(result[API_KEY_STORAGE_KEY]);
+  if (apiKeyInput) {
+    apiKeyInput.value = '';
+    apiKeyInput.placeholder = saved ? 'Key saved. Paste a new one to replace' : 'Paste key (fapi_…)';
+  }
+  if (apiKeyNote) {
+    apiKeyNote.textContent = saved
+      ? 'Saved. Lookups go through fencingapi.teamremco.org, falling back to FencingTracker if it is unreachable. Save an empty box to remove the key.'
+      : 'Optional. With a key, lookups go through fencingapi.teamremco.org; without one, straight to FencingTracker.';
+  }
+}
+
+/**
+ * Save (or, when empty, remove) the fencing-api key
+ */
+async function saveApiKey() {
+  const key = apiKeyInput ? apiKeyInput.value.trim() : '';
+  try {
+    if (key) {
+      if (!key.startsWith('fapi_')) {
+        setStatus('That does not look like a fencing-api key (they start with fapi_).', true);
+        return;
+      }
+      await chrome.storage.local.set({ [API_KEY_STORAGE_KEY]: key });
+      setStatus('Key saved.');
+    } else {
+      await chrome.storage.local.remove(API_KEY_STORAGE_KEY);
+      setStatus('Key removed. Lookups go straight to FencingTracker.');
+    }
+    await showApiKeyState();
+  } catch (error) {
+    console.error(error);
+    setStatus('Could not save the key.', true);
   }
 }
 

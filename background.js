@@ -20,7 +20,8 @@ try {
     'src/api/search.js',
     'src/api/profile.js',
     'src/api/strength.js',
-    'src/api/history.js'
+    'src/api/history.js',
+    'src/api/fencing-api.js'
   );
 } catch (error) {
   console.error(
@@ -36,7 +37,8 @@ try {
     '  - src/api/search.js\n' +
     '  - src/api/profile.js\n' +
     '  - src/api/strength.js\n' +
-    '  - src/api/history.js\n\n' +
+    '  - src/api/history.js\n' +
+    '  - src/api/fencing-api.js\n\n' +
     'If you are developing the extension:\n' +
     '  Run ./scripts/package-extension.sh to create a proper distribution.\n\n' +
     'If you installed from a zip:\n' +
@@ -64,13 +66,15 @@ try {
  */
 function buildBackgroundApi() {
   const requiredFunctions = {
-    // Search (JSON, no parsing needed)
-    searchFencers: typeof searchFencers === 'function' ? searchFencers : null,
+    // Each lookup tries fencing-api first (when a key is saved in the popup) and
+    // falls back to FencingTracker directly. fencing-api results carry `parsed`
+    // data instead of `html`.
+    searchFencers: typeof searchFencers === 'function' ? preferFencingApi(apiSearchFencers, searchFencers) : null,
 
     // Cached HTML getters (background-safe, with 24-hour cache + slug fallback)
-    getProfile: typeof getProfile === 'function' ? getProfile : null,
-    getStrength: typeof getStrength === 'function' ? getStrength : null,
-    getHistory: typeof getHistory === 'function' ? getHistory : null,
+    getProfile: typeof getProfile === 'function' ? preferFencingApi(apiGetProfile, getProfile) : null,
+    getStrength: typeof getStrength === 'function' ? preferFencingApi(apiGetStrength, getStrength) : null,
+    getHistory: typeof getHistory === 'function' ? preferFencingApi(apiGetHistory, getHistory) : null,
 
     // Cache management
     purgeExpired: typeof purgeExpired === 'function' ? purgeExpired : null,
