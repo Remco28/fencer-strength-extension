@@ -61,7 +61,7 @@ User selection
 | Strength | `GET /p/{id}/{slug}/strength` | `table.table-striped` weapon/type/strength/range + `const series` |
 | History | `GET /p/{id}/{slug}/history` | Win/Loss table with Victories/Losses + “All time” |
 
-Documented originally in `comms/research/fencingtracker.md` (Oct 2025 research era).
+Documented originally in `docs/fencingtracker-research.md` (Oct 2025 research era).
 
 ---
 
@@ -228,7 +228,7 @@ Today only `src/utils/normalize.spec.js` exists; parsers have no automated cover
 
 ### 4.6 Update research notes
 
-Refresh `comms/research/fencingtracker.md` to match this document after implementation so future agents do not re-learn the old card-header selectors.
+Refresh `docs/fencingtracker-research.md` to match this document after implementation so future agents do not re-learn the old card-header selectors.
 
 ---
 
@@ -261,7 +261,7 @@ These are quality / maintainability items observed while reviewing the repo. Ord
 
 ### 5.4 UX / product
 
-- Keyboard accessibility audit (already on `NEXT_STEPS.md`).
+- Keyboard accessibility audit (open item in `docs/development.md`).
 - Popup is minimal (only “View Tracked”); could show count badge, quick search, last lookup.
 - Display **USFA rating history** (E25, etc.) from summary profile tables as optional enrichment (new site surface).
 - Link out more clearly: Strength tab / History tab deep links.
@@ -288,7 +288,7 @@ Work in branch `update/fencingtracker-site-refresh`.
 
 ### PR / commit sequence (suggested)
 
-1. **Docs** — this file + short pointer from `README.md` / `comms/research/fencingtracker.md` *(this change)*.
+1. **Docs** — this file + short pointer from `README.md` / `docs/fencingtracker-research.md` *(this change)*.
 2. **Cache namespace bump** — avoid serving pre-redesign HTML.
 3. **Profile parser update** — new hero selectors + fallbacks; manual smoke on 3–5 athletes.
 4. **Strength parser hardening** — scope to summary table; optional range/min/max.
@@ -385,4 +385,4 @@ Content-Type: application/json
 
 ---
 
-*When implementation begins, treat this document as the source of truth until `comms/research/fencingtracker.md` is rewritten to match.*
+*When implementation begins, treat this document as the source of truth until `docs/fencingtracker-research.md` is rewritten to match.*

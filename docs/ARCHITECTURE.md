@@ -80,4 +80,4 @@ The extension is designed to handle various error conditions gracefully.
 - **Keep Flows Cohesive**: Avoid leaking implementation details across the content/background boundary. The content script should only need to know *what* data it needs, not *how* it is fetched.
 
 ---
-*This document supersedes `docs/technical-notes.md` and the technical sections of `comms/planning.md`.*
+*This document supersedes the earlier `docs/technical-notes.md` and `comms/planning.md` (both removed; in git history).*

@@ -107,6 +107,6 @@ This visual foundation supports upcoming features:
 
 ## References
 
-- Spec: `comms/tasks/2025-10-09-modal-visual-refresh.md`
+- Spec: `comms/tasks/2025-10-09-modal-visual-refresh.md` (removed; in git history)
 - Stylesheet: `modal.css`
 - Manifest: `manifest.json`

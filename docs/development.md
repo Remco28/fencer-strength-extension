@@ -67,3 +67,10 @@ The `src/cache/cache.js` module provides helper functions:
 - `setCache(key, value, ttl)` - Store data with TTL
 - `getCache(key)` - Retrieve data (null if expired)
 - `clearExpiredCache()` - Clean up expired entries
+
+## Open items
+
+Carried over from the old `NEXT_STEPS.md` (removed 2026-10-13):
+
+- Audit keyboard accessibility: navigation and focus management in the modal, so the extension is usable without a mouse.
+- Document the main test scenarios in `docs/testing-guide.md` (comma names, nickname slugs, favorites management).
