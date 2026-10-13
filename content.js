@@ -965,7 +965,7 @@ async function showProfileView(searchResult, lookupId) {
       // FencingTracker has no rating until a fencer has bouts; say so, so an empty
       // (often duplicate) profile isn't mistaken for a broken lookup.
       strengthCards.innerHTML =
-        history && history.bouts === 0
+        historyHtmlResult && history && history.bouts === 0
           ? '<p class="fs-no-data">No strength data: FencingTracker has no bouts recorded for this fencer. If there is another result with the same name, try that one.</p>'
           : '<p class="fs-no-data">No strength data available</p>';
     } else {
