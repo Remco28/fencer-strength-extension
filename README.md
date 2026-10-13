@@ -4,7 +4,7 @@
 
 This browser extension for Chrome, Firefox, and Edge lets you right-click a fencer's name on any website to instantly view their competitive profile, strength ratings, and win/loss record from FencingTracker.com.
 
-Keep tabs on your favorite athletes by starring them for quick access, and see a summary of their skills across all three weapons.
+Save up to two **My kids** profiles in the popup to see strength-based matchup estimates (pool and DE win chance) against anyone you look up. Optionally star other athletes as **Favorites** for quick access.
 
 ![Fencer Strength Lookup Modal](assets/modal.png)
 
@@ -14,7 +14,8 @@ Keep tabs on your favorite athletes by starring them for quick access, and see a
 -   **Detailed Profiles**: View fencer details including club, country, and birth year.
 -   **Multi-Weapon Strength**: See DE and Pool strength ratings for Épée, Foil, and Saber.
 -   **Win/Loss Records**: Access career bout statistics at a glance.
--   **Track Your Favorites**: Star fencers to add them to a quick-access list in the extension popup.
+-   **My Kids Matchups**: Configure up to two kids in the popup; opponent lookups show Pool/DE win chance (%) plus a short plain-language label, using overlapping weapons only.
+-   **Favorites**: Star fencers for a quick-access list (separate from My kids).
 -   **Smart Name Recognition**: Works with formats like `"First Last"`, `"Last, First"`, and even nicknames.
 
 ## How to Use
@@ -27,9 +28,9 @@ Keep tabs on your favorite athletes by starring them for quick access, and see a
 
 The extension will show a profile if it finds a single match or a list of options for multiple matches.
 
-You can view your list of starred fencers at any time by clicking the extension icon in your browser toolbar.
+Click the extension icon to manage **My kids** and open **Favorites**.
 
-![Tracked Fencers List](assets/tracklist.png)
+![Favorites List](assets/tracklist.png)
 
 ## Installation
 
@@ -63,7 +64,7 @@ This extension is designed with your privacy in mind:
 
 -   It only activates when you use the context menu or click the toolbar icon.
 -   It communicates exclusively with FencingTracker.com to retrieve fencer data.
--   No personal data is collected, stored, or shared. All tracked fencer information is saved locally on your computer.
+-   No personal data is collected, stored, or shared. My kids and favorites are saved only in local browser storage.
 
 ---
 

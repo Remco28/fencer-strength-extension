@@ -251,8 +251,16 @@ function getSearchCacheKey(query) {
  * @param {string} id - Fencer ID
  * @returns {string} Cache key
  */
+// v2 prefix invalidates HTML cached before the 2026 person-hero redesign.
+const CACHE_KEY_VERSION = 'v2';
+
+/**
+ * Create a cache key for profile data
+ * @param {string} id - Fencer ID
+ * @returns {string} Cache key
+ */
 function getProfileCacheKey(id) {
-  return `profile:${id}`;
+  return `profile:${CACHE_KEY_VERSION}:${id}`;
 }
 
 /**
@@ -261,7 +269,7 @@ function getProfileCacheKey(id) {
  * @returns {string} Cache key
  */
 function getStrengthCacheKey(id) {
-  return `strength:${id}`;
+  return `strength:${CACHE_KEY_VERSION}:${id}`;
 }
 
 /**
@@ -270,7 +278,7 @@ function getStrengthCacheKey(id) {
  * @returns {string} Cache key
  */
 function getHistoryCacheKey(id) {
-  return `history:${id}`;
+  return `history:${CACHE_KEY_VERSION}:${id}`;
 }
 
 const NAME_SUFFIXES = new Set(['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv', 'v', 'vi']);
