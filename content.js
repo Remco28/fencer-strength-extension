@@ -962,7 +962,12 @@ async function showProfileView(searchResult, lookupId) {
     // Create strength cards for each weapon
     const weapons = Object.keys(strength.weapons || {});
     if (weapons.length === 0) {
-      strengthCards.innerHTML = '<p class="fs-no-data">No strength data available</p>';
+      // FencingTracker has no rating until a fencer has bouts; say so, so an empty
+      // (often duplicate) profile isn't mistaken for a broken lookup.
+      strengthCards.innerHTML =
+        history && history.bouts === 0
+          ? '<p class="fs-no-data">No strength data: FencingTracker has no bouts recorded for this fencer. If there is another result with the same name, try that one.</p>'
+          : '<p class="fs-no-data">No strength data available</p>';
     } else {
       weapons.forEach(weapon => {
         const weaponData = strength.weapons[weapon];
