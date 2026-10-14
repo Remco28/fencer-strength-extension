@@ -61,8 +61,8 @@ async function showApiKeyState() {
   }
   if (apiKeyNote) {
     apiKeyNote.textContent = saved
-      ? 'Saved. Lookups go through fencingapi.teamremco.org, falling back to FencingTracker if it is unreachable. Save an empty box to remove the key.'
-      : 'Optional. With a key, lookups go through fencingapi.teamremco.org; without one, straight to FencingTracker.';
+      ? 'Saved. Lookups go through fencingapi.teamremco.org. Save an empty box to remove the key.'
+      : 'Required. Lookups go through fencingapi.teamremco.org; ask Frank for a key.';
   }
 }
 
@@ -81,7 +81,7 @@ async function saveApiKey() {
       setStatus('Key saved.');
     } else {
       await chrome.storage.local.remove(API_KEY_STORAGE_KEY);
-      setStatus('Key removed. Lookups go straight to FencingTracker.');
+      setStatus('Key removed. Lookups need a key to work.');
     }
     await showApiKeyState();
   } catch (error) {

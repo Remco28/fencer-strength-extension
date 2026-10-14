@@ -18,6 +18,12 @@ Save up to two **My kids** profiles in the popup to see strength-based matchup e
 -   **Favorites**: Star fencers for a quick-access list (separate from My kids).
 -   **Smart Name Recognition**: Works with formats like `"First Last"`, `"Last, First"`, and even nicknames.
 
+## Setup: API key
+
+The extension reads FencingTracker data through Frank's fencing-api (`fencingapi.teamremco.org`),
+never from FencingTracker directly, so it needs a key: open the extension popup, paste the key
+(it starts with `fapi_`) and save. Without a key, lookups show a message asking for one.
+
 ## How to Use
 
 1.  **Highlight a fencer's name** on any webpage.

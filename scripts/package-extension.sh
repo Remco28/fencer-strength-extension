@@ -62,11 +62,7 @@ cp popup.js "${DIST_DIR}/"
 # - src/config/base-url.js: FencingTracker API endpoint configuration
 # - src/cache/cache.js: 24-hour TTL cache layer
 # - src/utils/normalize.js: Name normalization and slug generation
-# - src/api/search.js: Fencer search with variant fallback
-# - src/api/profile.js: Profile HTML fetching with slug regeneration
-# - src/api/strength.js: Strength ratings HTML fetching
-# - src/api/history.js: Bout history HTML fetching
-# - src/api/fencing-api.js: fencing-api client (tried first when a key is saved)
+# - src/api/fencing-api.js: fencing-api client (every lookup goes through it)
 cp -r src/ "${DIST_DIR}/"
 
 # Assets referenced by manifest and web_accessible_resources

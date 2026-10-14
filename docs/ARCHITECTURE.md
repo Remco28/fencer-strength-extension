@@ -15,7 +15,8 @@ The extension follows a standard Manifest V3 architecture, separating privileged
 - **Content Script** (`content.js`) – The UI layer. It is injected into web pages to display the lookup modal and interact with the user. It does **not** perform any direct network requests.
 
 ### Supporting Services
-- **Storage Cache** (`chrome.storage.local`) – Used as a persistent cache for network responses (search results, profiles, etc.) to improve performance and reduce load on `fencingtracker.com`.
+- **fencing-api** (`fencingapi.teamremco.org`) – Every lookup goes through this home-server API, which scrapes FencingTracker and returns parsed JSON. The extension has no direct FencingTracker path; when data breaks, it is fixed in fencing-api. Requires a key saved in the popup.
+- **Storage Cache** (`chrome.storage.local`) – Used as a persistent cache for network responses (search results, profiles, etc.).
 
 ## 3. Process & Data Flow
 
@@ -36,7 +37,7 @@ The architecture is designed around a message-passing model to ensure security a
  [Service Worker: background.js] --- (Handles logic)
         |
         v
- [fetch API] <=> [fencingtracker.com] --- (Performs network requests)
+ [fetch API] <=> [fencingapi.teamremco.org] --- (Performs network requests)
         |
         v
  [Cache: chrome.storage.local] --- (Stores/retrieves results)

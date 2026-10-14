@@ -1,5 +1,5 @@
 // Content script for Fencer Strength extension
-// Injects modal and handles fencer lookup flow with live fencingtracker.com data
+// Injects modal and handles fencer lookup flow with FencingTracker data from fencing-api
 // All API calls are delegated to the background service worker via message passing
 
 // ============================================================================
@@ -44,415 +44,6 @@ async function callBackgroundApi(functionName, ...args) {
       }
     );
   });
-}
-
-// ============================================================================
-// HTML Parsers (DOMParser-dependent, must run in content script context)
-// ============================================================================
-// These functions parse HTML responses from fencingtracker.com using DOMParser.
-// They cannot run in the background service worker (no DOM APIs available).
-// The background worker fetches raw HTML, and content script parses it here.
-// ============================================================================
-
-/**
- * Parse profile HTML
- * @param {string} html - HTML content
- * @param {string} id - Fencer ID
- * @param {string} slug - Name slug
- * @returns {Object} Parsed profile data
- */
-function parseProfileHtml(html, id, slug) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-
-  // Prefer redesigned person-hero layout; fall back to legacy card-header selectors.
-  const nameElement =
-    doc.querySelector('.person-hero__identity h1') ||
-    doc.querySelector('.person-hero h1') ||
-    doc.querySelector('div.card-header h1.fw-bold') ||
-    doc.querySelector('h1');
-  const name = nameElement ? nameElement.textContent.trim() : parseSlug(slug);
-
-  let birthYear = null;
-  const birthYearElement =
-    doc.querySelector('.person-hero__birth-year') ||
-    doc.querySelector('div.card-header h3.text-dark-emphasis');
-  if (birthYearElement) {
-    const yearText = birthYearElement.textContent.trim();
-    const yearMatch = yearText.match(/\b(19|20)\d{2}\b/);
-    if (yearMatch) {
-      birthYear = parseInt(yearMatch[0], 10);
-    }
-  }
-
-  let club = null;
-  const clubElement =
-    doc.querySelector('a.person-hero__club-link') ||
-    doc.querySelector('.person-hero a[href^="/club/"]') ||
-    doc.querySelector('div.card-header a[href^="/club/"]') ||
-    doc.querySelector('a[href^="/club/"]');
-  if (clubElement) {
-    club = clubElement.textContent.trim();
-  }
-
-  let country = 'USA';
-  const flagElement =
-    doc.querySelector('.person-hero__flag') ||
-    doc.querySelector('.person-hero .flag-icon') ||
-    doc.querySelector('.flag-icon');
-  if (flagElement) {
-    const title = flagElement.getAttribute('title');
-    if (title) {
-      country = title.trim();
-    }
-  }
-
-  return {
-    id,
-    slug,
-    name,
-    birthYear,
-    club,
-    country
-  };
-}
-
-/**
- * Convert slug back to readable name
- * @param {string} slug - Name slug
- * @returns {string} Readable name
- */
-function parseSlug(slug) {
-  return slug
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-/**
- * Parse strength HTML
- * @param {string} html - HTML content
- * @returns {Object} Parsed strength data
- */
-function parseStrengthHtml(html) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-
-  const weapons = {};
-
-  // Prefer the dedicated summary table so matchup/teaser tables are ignored.
-  let rows = doc.querySelectorAll('table.person-strength__summary-table tbody tr');
-  if (!rows.length) {
-    rows = doc.querySelectorAll('table.table-striped tbody tr');
-  }
-
-  for (const row of rows) {
-    const cells = row.querySelectorAll('td');
-    if (cells.length < 4) continue;
-
-    const weaponText = cells[0].textContent.trim();
-    const weapon = normalizeWeapon(weaponText);
-    if (!weapon || weapon === 'unknown') continue;
-
-    const typeText = cells[1].textContent.trim().toLowerCase();
-    // Only accept real strength-summary type labels (skip matchup "I win in pool" rows).
-    const isPool = typeText === 'pool' || typeText === 'pools';
-    const isDe =
-      typeText === 'de' ||
-      typeText === 'direct elimination' ||
-      typeText === 'direct eliminations';
-    if (!isPool && !isDe) continue;
-    const type = isPool ? 'pool' : 'de';
-
-    const strengthText = cells[2].textContent.trim();
-    if (!strengthText || strengthText === '-') continue;
-    const strengthValue = parseStrengthValue(strengthText);
-    if (strengthValue === '' || strengthValue === null || strengthValue === undefined) {
-      continue;
-    }
-
-    const rangeText = cells[3].textContent.trim();
-    const range = parseStrengthRange(rangeText);
-
-    // Prefer explicit Min/Max columns when present (new site layout).
-    if (cells.length >= 6) {
-      const minVal = parseInt(cells[4].textContent.trim(), 10);
-      const maxVal = parseInt(cells[5].textContent.trim(), 10);
-      if (!isNaN(minVal) && !isNaN(maxVal)) {
-        range.min = minVal;
-        range.max = maxVal;
-      }
-    }
-
-    if (!weapons[weapon]) {
-      weapons[weapon] = {};
-    }
-
-    weapons[weapon][type] = {
-      value: strengthValue,
-      ...range
-    };
-  }
-
-  const series = parseSeriesData(html);
-
-  return {
-    weapons,
-    series
-  };
-}
-
-/**
- * Normalize weapon name
- * @param {string} weapon - Weapon name
- * @returns {string} Normalized weapon name
- */
-function normalizeWeapon(weapon) {
-  const lower = weapon.toLowerCase().trim();
-  if (!lower) return 'unknown';
-  if (lower.includes('foil')) return 'foil';
-  if (lower.includes('epee') || lower.includes('épée') || lower.includes('pee')) return 'epee';
-  if (lower.includes('saber') || lower.includes('sabre')) return 'saber';
-  return lower;
-}
-
-/**
- * Parse strength value from text
- * @param {string} text - Strength text (e.g., "65", "B2", "U")
- * @returns {string|number} Parsed strength value
- */
-function parseStrengthValue(text) {
-  const trimmed = text.trim();
-
-  // Try to parse as number
-  const numValue = parseInt(trimmed, 10);
-  if (!isNaN(numValue)) {
-    return numValue;
-  }
-
-  // Return as string (e.g., "B2", "U")
-  return trimmed;
-}
-
-/**
- * Parse strength range from text
- * @param {string} text - Range text (e.g., "60-70", "+/- 5")
- * @returns {Object} Range object with min/max or empty
- */
-function parseStrengthRange(text) {
-  const trimmed = text.trim();
-
-  if (!trimmed || trimmed === '-') {
-    return {};
-  }
-
-  // Try to parse "min-max" format
-  const rangeMatch = trimmed.match(/(\d+)\s*-\s*(\d+)/);
-  if (rangeMatch) {
-    return {
-      min: parseInt(rangeMatch[1], 10),
-      max: parseInt(rangeMatch[2], 10)
-    };
-  }
-
-  // Try to parse "+/- n" format
-  const plusMinusMatch = trimmed.match(/[+\-\/]+\s*(\d+)/);
-  if (plusMinusMatch) {
-    const delta = parseInt(plusMinusMatch[1], 10);
-    return {
-      range: delta
-    };
-  }
-
-  return { raw: trimmed };
-}
-
-/**
- * Parse series data from inline script
- * @param {string} html - HTML content
- * @returns {Object|null} Series data or null
- */
-function parseSeriesData(html) {
-  // Look for "const series = {...}" in script
-  const seriesMatch = html.match(/const\s+series\s*=\s*({[\s\S]*?});/);
-  if (!seriesMatch) {
-    return null;
-  }
-
-  const objectLiteral = seriesMatch[1];
-
-  // Attempt JSON parse first
-  try {
-    return JSON.parse(objectLiteral);
-  } catch (jsonError) {
-    // Fall back to a manual parser that can handle unquoted keys and single quotes
-    try {
-      return parseJsObjectLiteral(objectLiteral);
-    } catch (literalError) {
-      console.warn('Failed to parse series data:', literalError);
-      return null;
-    }
-  }
-}
-
-/**
- * Parse a simple JS object literal without using eval
- * @param {string} literal - Object literal string
- * @returns {any} Parsed value
- */
-function parseJsObjectLiteral(literal) {
-  // Normalize quotes
-  let normalized = literal.replace(/'/g, '"');
-
-  // Quote unquoted keys by inserting double quotes around identifier + colon
-  normalized = normalized.replace(/([\s,{])([A-Za-z_][\w]*)\s*:/g, '$1"$2":');
-
-  // Remove trailing commas
-  normalized = normalized.replace(/,(\s*[}\]])/g, '$1');
-
-  return JSON.parse(normalized);
-}
-
-/**
- * Parse history HTML for win/loss statistics
- * @param {string} html - HTML content
- * @returns {Object} Parsed history data
- */
-function parseHistoryHtml(html) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-
-  let wins = 0;
-  let losses = 0;
-
-  const statsTable = findWinLossTable(doc);
-
-  if (!statsTable) {
-    console.warn('Win/Loss Statistics table not found');
-    return { wins: 0, losses: 0, bouts: 0 };
-  }
-
-  // Parse the table
-  const rows = statsTable.querySelectorAll('tbody tr');
-  const allTimeIndex = getAllTimeColumnIndex(statsTable);
-
-  for (const row of rows) {
-    const cells = row.querySelectorAll('td, th');
-    if (cells.length === 0) continue;
-
-    const rowLabel = cells[0].textContent.trim().toLowerCase();
-    const sanitizedLabel = rowLabel.replace(/[^a-z]/g, '');
-
-    if (sanitizedLabel.includes('ratio')) {
-      continue;
-    }
-
-    const isPoolRow = rowLabel.includes('pool');
-    const isDirectElimRow = /\bde\b/.test(rowLabel) || rowLabel.includes('direct elimination');
-
-    if (isPoolRow || isDirectElimRow) {
-      continue;
-    }
-
-    // Find "All Time" column (usually last column)
-    const valueCell =
-      allTimeIndex !== null && allTimeIndex < cells.length
-        ? cells[allTimeIndex]
-        : cells[cells.length - 1];
-
-    const allTimeValue = valueCell.textContent.trim();
-
-    if (
-      sanitizedLabel.includes('victo') ||
-      sanitizedLabel.includes('wins')
-    ) {
-      wins = parseStatValue(allTimeValue);
-    } else if (
-      sanitizedLabel.includes('loss') ||
-      sanitizedLabel.includes('defeat')
-    ) {
-      losses = parseStatValue(allTimeValue);
-    }
-  }
-
-  const bouts = wins + losses;
-
-  return {
-    wins,
-    losses,
-    bouts,
-    winRatio: bouts > 0 ? (wins / bouts * 100).toFixed(1) : '0.0'
-  };
-}
-
-/**
- * Parse a stat value (handles "-" as 0)
- * @param {string} text - Stat text
- * @returns {number} Parsed value
- */
-function parseStatValue(text) {
-  const trimmed = text.trim();
-
-  if (trimmed === '-' || trimmed === '') {
-    return 0;
-  }
-
-  const value = parseInt(trimmed, 10);
-  return isNaN(value) ? 0 : value;
-}
-
-/**
- * Locate the win/loss statistics table within the document
- * @param {Document} doc - Parsed HTML document
- * @returns {HTMLTableElement|null} Table element or null if not found
- */
-function findWinLossTable(doc) {
-  const tables = doc.querySelectorAll('table');
-
-  for (const table of tables) {
-    const rowLabels = table.querySelectorAll('tbody tr td:first-child, tbody tr th:first-child');
-
-    for (const cell of rowLabels) {
-      const label = cell.textContent.trim().toLowerCase();
-      const normalized = label.replace(/[^a-z]/g, '');
-
-      if (
-        normalized.includes('victo') ||
-        normalized.includes('wins') ||
-        normalized.includes('loss') ||
-        normalized.includes('defeat')
-      ) {
-        return table;
-      }
-    }
-  }
-
-  return null;
-}
-
-/**
- * Determine the column index corresponding to "All Time" totals
- * @param {HTMLTableElement} table - Win/loss table
- * @returns {number|null} Zero-based column index or null if not identified
- */
-function getAllTimeColumnIndex(table) {
-  const headerRow = table.querySelector('thead tr');
-  if (!headerRow) {
-    return null;
-  }
-
-  const headerCells = Array.from(headerRow.querySelectorAll('th, td'));
-
-  for (let i = 0; i < headerCells.length; i++) {
-    const headerText = headerCells[i].textContent.trim().toLowerCase();
-    const normalized = headerText.replace(/[^a-z]/g, '');
-
-    if (normalized.includes('alltime')) {
-      return i;
-    }
-  }
-
-  return null;
 }
 
 // Storage keys and icons
@@ -540,14 +131,8 @@ async function handleLookup(query) {
   } catch (error) {
     console.error('Lookup error:', error);
 
-    // Check if network error
-    if (error.message.includes('fetch') || error.message.includes('network')) {
-      showErrorState('Unable to reach fencingtracker.com. Please check your connection and try again.');
-    } else if (error.message.includes('Rate limited')) {
-      showErrorState('Too many requests. Please wait a moment and try again.');
-    } else {
-      showErrorState('An error occurred while searching. Please try again.');
-    }
+    // fencing-api client errors are already written for the user
+    showErrorState(error.message || 'An error occurred while searching. Please try again.');
   }
 }
 
@@ -829,46 +414,39 @@ async function showProfileView(searchResult, lookupId) {
   showLoadingState();
 
   try {
-    // Fetch cached/live HTML in parallel from background (with slug fallback), then parse locally
-    const [profileHtmlResult, strengthHtmlResult, historyHtmlResult] = await Promise.all([
-      callBackgroundApi('getProfile', searchResult.id, searchResult.slug, searchResult.name).catch(err => {
+    // Fetch profile, strength and history in parallel through fencing-api
+    let lookupError = null;
+    const [profileResult, strengthResult, historyResult] = await Promise.all([
+      callBackgroundApi('getProfile', searchResult.id, searchResult.slug).catch(err => {
         console.warn('Profile fetch failed:', err);
+        lookupError = lookupError || err;
         return null;
       }),
       callBackgroundApi('getStrength', searchResult.id, searchResult.slug).catch(err => {
         console.warn('Strength fetch failed:', err);
+        lookupError = lookupError || err;
         return null;
       }),
       callBackgroundApi('getHistory', searchResult.id, searchResult.slug).catch(err => {
         console.warn('History fetch failed:', err);
+        lookupError = lookupError || err;
         return null;
       })
     ]);
 
-    // Parse the HTML responses locally (DOMParser available in content script)
-    // fencing-api results arrive already parsed; direct FencingTracker results are HTML.
-    const profile = profileHtmlResult
-      ? profileHtmlResult.parsed ||
-        parseProfileHtml(profileHtmlResult.html, profileHtmlResult.id, profileHtmlResult.slug)
-      : { ...searchResult, birthYear: null };
-
-    const strength = strengthHtmlResult
-      ? strengthHtmlResult.parsed || parseStrengthHtml(strengthHtmlResult.html)
-      : { weapons: {} };
-
-    const history = historyHtmlResult
-      ? historyHtmlResult.parsed || parseHistoryHtml(historyHtmlResult.html)
-      : { wins: 0, losses: 0, bouts: 0 };
-
-    const dataSource = [profileHtmlResult, strengthHtmlResult, historyHtmlResult].some(
-      result => result && result.via === 'fencing-api'
-    )
-      ? 'via fencing-api'
-      : 'direct from FencingTracker';
+    const profile = profileResult ? profileResult.parsed : { ...searchResult, birthYear: null };
+    const strength = strengthResult ? strengthResult.parsed : { weapons: {} };
+    const history = historyResult ? historyResult.parsed : { wins: 0, losses: 0, bouts: 0 };
+    const dataSource = 'via fencing-api';
 
     // Ignore if a newer lookup started
     if (lookupId !== currentLookupId) {
       console.log('Ignoring stale profile response');
+      return;
+    }
+
+    if (!profileResult && !strengthResult && !historyResult && lookupError) {
+      showErrorState(lookupError.message || 'Unable to load this fencer. Please try again.');
       return;
     }
 
@@ -965,7 +543,7 @@ async function showProfileView(searchResult, lookupId) {
       // FencingTracker has no rating until a fencer has bouts; say so, so an empty
       // (often duplicate) profile isn't mistaken for a broken lookup.
       strengthCards.innerHTML =
-        historyHtmlResult && history && history.bouts === 0
+        historyResult && history && history.bouts === 0
           ? '<p class="fs-no-data">No strength data: FencingTracker has no bouts recorded for this fencer. If there is another result with the same name, try that one.</p>'
           : '<p class="fs-no-data">No strength data available</p>';
     } else {
@@ -2124,22 +1702,18 @@ async function loadKidMatchupData(kid) {
   let history = null;
 
   try {
-    const strengthHtmlResult = await callBackgroundApi('getStrength', kid.id, slug);
-    if (strengthHtmlResult && strengthHtmlResult.parsed) {
-      strength = strengthHtmlResult.parsed;
-    } else if (strengthHtmlResult && strengthHtmlResult.html) {
-      strength = parseStrengthHtml(strengthHtmlResult.html);
+    const strengthResult = await callBackgroundApi('getStrength', kid.id, slug);
+    if (strengthResult && strengthResult.parsed) {
+      strength = strengthResult.parsed;
     }
   } catch (error) {
     console.warn(`Failed to load strength for kid ${kid.name}:`, error);
   }
 
   try {
-    const historyHtmlResult = await callBackgroundApi('getHistory', kid.id, slug);
-    if (historyHtmlResult && historyHtmlResult.parsed) {
-      history = historyHtmlResult.parsed;
-    } else if (historyHtmlResult && historyHtmlResult.html) {
-      history = parseHistoryHtml(historyHtmlResult.html);
+    const historyResult = await callBackgroundApi('getHistory', kid.id, slug);
+    if (historyResult && historyResult.parsed) {
+      history = historyResult.parsed;
     }
   } catch (error) {
     // Optional for minimal experience line

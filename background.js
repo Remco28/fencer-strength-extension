@@ -9,7 +9,7 @@
 // content script flow intact; Phase 2 will wire message routing to use these.
 //
 // Loaded modules: base-url config, cache layer, normalization utilities,
-// and API functions (search, profile, strength, history).
+// and the fencing-api client (search, profile, strength, history).
 // ============================================================================
 
 try {
@@ -17,10 +17,6 @@ try {
     'src/config/base-url.js',
     'src/cache/cache.js',
     'src/utils/normalize.js',
-    'src/api/search.js',
-    'src/api/profile.js',
-    'src/api/strength.js',
-    'src/api/history.js',
     'src/api/fencing-api.js'
   );
 } catch (error) {
@@ -34,10 +30,6 @@ try {
     '  - src/config/base-url.js\n' +
     '  - src/cache/cache.js\n' +
     '  - src/utils/normalize.js\n' +
-    '  - src/api/search.js\n' +
-    '  - src/api/profile.js\n' +
-    '  - src/api/strength.js\n' +
-    '  - src/api/history.js\n' +
     '  - src/api/fencing-api.js\n\n' +
     'If you are developing the extension:\n' +
     '  Run ./scripts/package-extension.sh to create a proper distribution.\n\n' +
@@ -66,15 +58,12 @@ try {
  */
 function buildBackgroundApi() {
   const requiredFunctions = {
-    // Each lookup tries fencing-api first (when a key is saved in the popup) and
-    // falls back to FencingTracker directly. fencing-api results carry `parsed`
-    // data instead of `html`.
-    searchFencers: typeof searchFencers === 'function' ? preferFencingApi(apiSearchFencers, searchFencers) : null,
-
-    // Cached HTML getters (background-safe, with 24-hour cache + slug fallback)
-    getProfile: typeof getProfile === 'function' ? preferFencingApi(apiGetProfile, getProfile) : null,
-    getStrength: typeof getStrength === 'function' ? preferFencingApi(apiGetStrength, getStrength) : null,
-    getHistory: typeof getHistory === 'function' ? preferFencingApi(apiGetHistory, getHistory) : null,
+    // Every lookup goes through fencing-api (key saved in the popup); results
+    // arrive already parsed. There is no direct FencingTracker path.
+    searchFencers: typeof apiSearchFencers === 'function' ? apiSearchFencers : null,
+    getProfile: typeof apiGetProfile === 'function' ? apiGetProfile : null,
+    getStrength: typeof apiGetStrength === 'function' ? apiGetStrength : null,
+    getHistory: typeof apiGetHistory === 'function' ? apiGetHistory : null,
 
     // Cache management
     purgeExpired: typeof purgeExpired === 'function' ? purgeExpired : null,
