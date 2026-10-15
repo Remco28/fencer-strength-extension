@@ -843,3 +843,10 @@ a.fs-tracked-name:hover {
   font-size: 12px;
   color: #b45309;
 }
+
+.fs-tracked-asof {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  opacity: 0.65;
+}

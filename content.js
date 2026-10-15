@@ -437,7 +437,8 @@ async function showProfileView(searchResult, lookupId) {
     const profile = profileResult ? profileResult.parsed : { ...searchResult, birthYear: null };
     const strength = strengthResult ? strengthResult.parsed : { weapons: {} };
     const history = historyResult ? historyResult.parsed : { wins: 0, losses: 0, bouts: 0 };
-    const dataSource = 'via fencing-api';
+    const asOf = formatDataAsOf(profileResult && profileResult.parsed, strength, history);
+    const dataSource = asOf ? `via fencing-api · ${asOf}` : 'via fencing-api';
 
     // Ignore if a newer lookup started
     if (lookupId !== currentLookupId) {
@@ -880,6 +881,26 @@ function isTrackedListVisible() {
  * @param {Object} strength - Strength response
  * @returns {Object|null} Tracked entry or null
  */
+/**
+ * "as of Oct 14, 8:26 PM" from the oldest fencing-api answer given; "" when none says.
+ * Adds "(could not refresh)" when fencing-api could only give an old copy.
+ */
+function formatDataAsOf(...parts) {
+  const known = parts.filter(part => part && part.fetchedAt);
+  if (!known.length) {
+    return '';
+  }
+  const oldest = known.map(part => new Date(part.fetchedAt)).sort((a, b) => a - b)[0];
+  const label = `as of ${formatAsOfDate(oldest)}`;
+  return known.some(part => part.stale) ? `${label} (could not refresh)` : label;
+}
+
+function formatAsOfDate(date) {
+  const day = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const time = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return `${day}, ${time}`;
+}
+
 function buildTrackedEntry(profile, strength) {
   if (!profile || !profile.id || !profile.name) {
     return null;
@@ -895,7 +916,8 @@ function buildTrackedEntry(profile, strength) {
     deStrength: primary.de,
     poolStrength: primary.pool,
     weapon: primary.weapon,
-    weaponSummaries
+    weaponSummaries,
+    dataAsOf: (strength && strength.fetchedAt) || null
   };
 }
 
@@ -1054,6 +1076,7 @@ function renderTrackedWeaponSummaries(entry) {
 
   if (!summaries.length) {
     container.textContent = formatTrackedStrength(entry);
+    appendTrackedAsOf(container, entry);
     return container;
   }
 
@@ -1084,7 +1107,22 @@ function renderTrackedWeaponSummaries(entry) {
     container.appendChild(chip);
   });
 
+  appendTrackedAsOf(container, entry);
   return container;
+}
+
+/**
+ * A tracked fencer's numbers are a saved snapshot: say when they were read.
+ * Entries saved before this have no date and show none.
+ */
+function appendTrackedAsOf(container, entry) {
+  if (!entry.dataAsOf) {
+    return;
+  }
+  const note = document.createElement('span');
+  note.className = 'fs-tracked-asof';
+  note.textContent = `as of ${formatAsOfDate(new Date(entry.dataAsOf))}`;
+  container.appendChild(note);
 }
 
 /**
@@ -1193,7 +1231,8 @@ function setTrackedFencers(entries) {
           ? null
           : poolStrength,
       weapon: weapon || null,
-      weaponSummaries: normalizedSummaries
+      weaponSummaries: normalizedSummaries,
+      dataAsOf: entry.dataAsOf || null
     };
   });
 

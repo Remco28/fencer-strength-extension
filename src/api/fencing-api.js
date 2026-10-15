@@ -152,6 +152,17 @@ async function apiSearchFencers(query) {
   }));
 }
 
+/**
+ * When fencing-api read FencingTracker for this answer, and whether it was an old copy it
+ * could not refresh. Shown to the user as "as of ...".
+ */
+function freshness(body) {
+  return {
+    fetchedAt: body.fetched_at || null,
+    stale: Boolean(body.stale) || body.source === 'fallback'
+  };
+}
+
 function fencerPath(id, tab) {
   return `/v1/tracker/fencers/${encodeURIComponent(id)}/${tab}`;
 }
@@ -175,7 +186,8 @@ async function apiGetProfile(id, slug) {
       name: item.name,
       birthYear: item.birth_year || null,
       club: item.club || null,
-      country: item.country || 'USA'
+      country: item.country || 'USA',
+      ...freshness(body)
     }
   };
 }
@@ -208,7 +220,7 @@ async function apiGetStrength(id, slug) {
       series[entry.weapon] = entry.series;
     }
   });
-  return { via: 'fencing-api', parsed: { weapons, series } };
+  return { via: 'fencing-api', parsed: { weapons, series, ...freshness(body) } };
 }
 
 /**
@@ -226,7 +238,8 @@ async function apiGetHistory(id, slug) {
       wins,
       losses,
       bouts,
-      winRatio: bouts > 0 ? (wins / bouts * 100).toFixed(1) : '0.0'
+      winRatio: bouts > 0 ? (wins / bouts * 100).toFixed(1) : '0.0',
+      ...freshness(body)
     }
   };
 }
