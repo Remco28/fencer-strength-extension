@@ -15,6 +15,7 @@ Save up to two **My kids** profiles in the popup to see strength-based matchup e
 -   **Multi-Weapon Strength**: See DE and Pool strength ratings for Épée, Foil, and Saber.
 -   **Win/Loss Records**: Access career bout statistics at a glance.
 -   **My Kids Matchups**: Configure up to two kids in the popup; opponent lookups show Pool/DE win chance (%) plus a short plain-language label, using overlapping weapons only.
+-   **Head to Head**: Each kid's card also shows their record against the opponent, pools and DE kept apart, when they last fenced, and the latest bouts with the win chance FencingTracker predicted before each.
 -   **Favorites**: Star fencers for a quick-access list (separate from My kids).
 -   **Smart Name Recognition**: Works with formats like `"First Last"`, `"Last, First"`, and even nicknames.
 

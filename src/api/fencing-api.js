@@ -54,7 +54,9 @@ async function fencingApiGet(path, params) {
       signal: controller.signal
     });
     if (response.status !== 200 && response.status !== 202) {
-      throw new Error(await fencingApiErrorMessage(response));
+      const failure = new Error(await fencingApiErrorMessage(response));
+      failure.status = response.status;
+      throw failure;
     }
     const body = await response.json();
     if (body && body.fetched_at) {
@@ -239,6 +241,33 @@ async function apiGetHistory(id, slug) {
       losses,
       bouts,
       winRatio: bouts > 0 ? (wins / bouts * 100).toFixed(1) : '0.0',
+      ...freshness(body)
+    }
+  };
+}
+
+/**
+ * Head-to-head between two fencers, told from `id`'s side, from the histories fencing-api has
+ * already stored (it never scrapes for this). Null while neither history has been read.
+ */
+async function apiGetHeadToHead(id, opponentId) {
+  let body;
+  try {
+    body = await fencingApiGet(`${fencerPath(id, 'vs')}/${encodeURIComponent(opponentId)}`, {});
+  } catch (error) {
+    if (error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+  const item = (Array.isArray(body.items) && body.items[0]) || {};
+  return {
+    via: 'fencing-api',
+    parsed: {
+      pool: item.pool || { wins: 0, losses: 0 },
+      de: item.de || { wins: 0, losses: 0 },
+      lastFenced: item.last_fenced || null,
+      bouts: Array.isArray(item.bouts) ? item.bouts : [],
       ...freshness(body)
     }
   };

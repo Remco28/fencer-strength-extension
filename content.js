@@ -1733,12 +1733,14 @@ function buildTypeComparison(kidWeaponData, oppWeaponData, type) {
 /**
  * Fetch strength (and optional history) for a kid entry
  * @param {{id:string,slug:string,name:string}} kid
- * @returns {Promise<{kid:Object,strength:Object,history:Object|null}>}
+ * @param {string|null} opponentId - the looked-up fencer, for the head-to-head
+ * @returns {Promise<{kid:Object,strength:Object,history:Object|null,headToHead:Object|null}>}
  */
-async function loadKidMatchupData(kid) {
+async function loadKidMatchupData(kid, opponentId) {
   const slug = kid.slug || buildSlugFromNameSafe(kid.name);
   let strength = { weapons: {} };
   let history = null;
+  let headToHead = null;
 
   try {
     const strengthResult = await callBackgroundApi('getStrength', kid.id, slug);
@@ -1759,7 +1761,17 @@ async function loadKidMatchupData(kid) {
     console.warn(`Failed to load history for kid ${kid.name}:`, error);
   }
 
-  return { kid, strength, history };
+  // After the kid's history, so fencing-api has their bouts stored to answer from.
+  if (opponentId) {
+    try {
+      const result = await callBackgroundApi('getHeadToHead', kid.id, opponentId);
+      headToHead = result ? result.parsed : null;
+    } catch (error) {
+      console.warn(`Failed to load head-to-head for kid ${kid.name}:`, error);
+    }
+  }
+
+  return { kid, strength, history, headToHead };
 }
 
 /**
@@ -1832,7 +1844,7 @@ async function renderMatchupSection(profile, strength, history, lookupId) {
   section.innerHTML = `<div class="fs-matchup-loading">Loading matchups…</div>`;
   section.classList.remove('fs-hidden');
 
-  const loaded = await Promise.all(kidsForMatchup.map(loadKidMatchupData));
+  const loaded = await Promise.all(kidsForMatchup.map(kid => loadKidMatchupData(kid, opponentId)));
   if (lookupId !== currentLookupId) {
     return;
   }
@@ -1876,6 +1888,82 @@ async function renderMatchupSection(profile, strength, history, lookupId) {
   paintMatchupSection();
 }
 
+const H2H_RECENT_BOUTS = 3;
+const WEAPON_WORDS = { epee: /[eé]p[eé]e/i, foil: /foil/i, saber: /sab(er|re)/i };
+
+/**
+ * The bouts for one weapon. An event whose name says no weapon is kept.
+ * @param {Array} bouts
+ * @param {string} weapon
+ */
+function boutsForWeapon(bouts, weapon) {
+  const own = WEAPON_WORDS[weapon];
+  return bouts.filter(bout => {
+    const event = bout.event || '';
+    const named = Object.values(WEAPON_WORDS).some(word => word.test(event));
+    return !named || !own || own.test(event);
+  });
+}
+
+/**
+ * "2026-10-04" as a short local date, without shifting the day across time zones.
+ * @param {string|null} isoDay
+ */
+function formatBoutDay(isoDay) {
+  if (!isoDay) return 'date unknown';
+  const [year, month, day] = isoDay.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric'
+  });
+}
+
+/**
+ * Head-to-head block for a kid's matchup card: pool and DE records kept apart, when they last
+ * fenced, and the latest bouts with FencingTracker's predicted chance before each.
+ * @param {Object|null} headToHead - parsed apiGetHeadToHead result
+ * @param {string} weapon - the selected weapon chip
+ */
+function buildHeadToHeadHtml(headToHead, weapon) {
+  if (!headToHead) {
+    return '';
+  }
+  const bouts = boutsForWeapon(headToHead.bouts || [], weapon);
+  if (!bouts.length) {
+    return `
+      <div class="fs-matchup-h2h">
+        <div class="fs-matchup-h2h-title">Head to head</div>
+        <div class="fs-matchup-h2h-record">Never fenced (per FencingTracker)</div>
+      </div>`;
+  }
+  const record = { pool: { wins: 0, losses: 0 }, de: { wins: 0, losses: 0 } };
+  bouts.forEach(bout => {
+    record[bout.round === 'Pool' ? 'pool' : 'de'][bout.result === 'V' ? 'wins' : 'losses'] += 1;
+  });
+  const recordText = [
+    `Pools ${record.pool.wins}–${record.pool.losses}`,
+    `DE ${record.de.wins}–${record.de.losses}`,
+    `Last fenced ${formatBoutDay(bouts[0].date)}`
+  ].join(' · ');
+  const recent = bouts.slice(0, H2H_RECENT_BOUTS).map(bout => {
+    const stage = bout.round === 'Pool' ? 'Pool' : `DE ${bout.round}`;
+    const outcome = `${bout.result === 'V' ? 'Won' : 'Lost'} ${bout.score_for}–${bout.score_against}`;
+    const predicted =
+      bout.win_chance !== null && bout.win_chance !== undefined
+        ? ` · predicted ${Math.round(bout.win_chance)}%`
+        : '';
+    return `<li>${escapeHtml(`${formatBoutDay(bout.date)} · ${stage} · ${outcome}${predicted}`)}</li>`;
+  });
+  const more = bouts.length > H2H_RECENT_BOUTS
+    ? `<li class="fs-matchup-h2h-more">+${bouts.length - H2H_RECENT_BOUTS} earlier</li>`
+    : '';
+  return `
+    <div class="fs-matchup-h2h">
+      <div class="fs-matchup-h2h-title">Head to head</div>
+      <div class="fs-matchup-h2h-record">${escapeHtml(recordText)}</div>
+      <ul class="fs-matchup-h2h-bouts">${recent.join('')}${more}</ul>
+    </div>`;
+}
+
 /**
  * Paint matchup DOM from matchupWeaponState
  */
@@ -1909,13 +1997,15 @@ function paintMatchupSection() {
       : `<div class="fs-matchup-weapon-label">${escapeHtml(formatWeaponLabel(selected))}</div>`;
 
   const cardsHtml = kidComparisons
-    .map(({ kid, strength: kidStrength, history: kidHistory }) => {
+    .map(({ kid, strength: kidStrength, history: kidHistory, headToHead }) => {
+      const h2hHtml = buildHeadToHeadHtml(headToHead, selected);
       const overlaps = overlappingWeapons(kidStrength, opponentStrength);
       if (!overlaps.includes(selected)) {
         return `
           <div class="fs-matchup-card">
             <div class="fs-matchup-kid-name">${escapeHtml(kid.name)}</div>
             <p class="fs-matchup-card-note">No ${escapeHtml(formatWeaponLabel(selected))} rating</p>
+            ${h2hHtml}
           </div>`;
       }
 
@@ -1928,6 +2018,7 @@ function paintMatchupSection() {
           <div class="fs-matchup-card">
             <div class="fs-matchup-kid-name">${escapeHtml(kid.name)}</div>
             <p class="fs-matchup-card-note">Incomplete strength data for this weapon</p>
+            ${h2hHtml}
           </div>`;
       }
 
@@ -1971,6 +2062,7 @@ function paintMatchupSection() {
           <div class="fs-matchup-rows">${rows.join('')}</div>
           <div class="fs-matchup-strength">${escapeHtml(strengthBits.join(' · '))}</div>
           ${experienceLine}
+          ${h2hHtml}
         </div>`;
     })
     .join('');

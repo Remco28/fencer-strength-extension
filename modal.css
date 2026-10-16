@@ -773,6 +773,40 @@ a.fs-tracked-name:hover {
   color: #9ca3af;
 }
 
+.fs-matchup-h2h {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 12px;
+}
+
+.fs-matchup-h2h-title {
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.fs-matchup-h2h-record {
+  font-weight: 600;
+  color: #111827;
+  font-size: 13px;
+}
+
+.fs-matchup-h2h-bouts {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  color: #4b5563;
+  font-variant-numeric: tabular-nums;
+}
+
+.fs-matchup-h2h-more {
+  color: #9ca3af;
+}
+
 .fs-matchup-card-note,
 .fs-matchup-empty,
 .fs-matchup-loading {

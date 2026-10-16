@@ -64,6 +64,7 @@ function buildBackgroundApi() {
     getProfile: typeof apiGetProfile === 'function' ? apiGetProfile : null,
     getStrength: typeof apiGetStrength === 'function' ? apiGetStrength : null,
     getHistory: typeof apiGetHistory === 'function' ? apiGetHistory : null,
+    getHeadToHead: typeof apiGetHeadToHead === 'function' ? apiGetHeadToHead : null,
 
     // Cache management
     purgeExpired: typeof purgeExpired === 'function' ? purgeExpired : null,
